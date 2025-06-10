@@ -27,24 +27,24 @@ const Wallet = () => {
       amount: 20,
       credits: 20,
       popular: false,
-      paypalLink: 'https://paypal.me/yourstore/20', // Replace with actual PayPal link
-      creemLink: 'https://creem.io/pay/your-store/20', // Replace with actual Creem.io link
+      paypalLink: 'https://www.paypal.com/ncp/payment/AXVWLDYSE65YU', // Replace with actual PayPal link
+      creemLink: 'https://www.creem.io/payment/prod_4DcD1pV6lnQZUeUO3OCF1L', // Replace with actual Creem.io link
       description: 'Perfect for trying out premium features'
     },
     {
       amount: 50,
       credits: 50,
       popular: true,
-      paypalLink: 'https://paypal.me/yourstore/50', // Replace with actual PayPal link
-      creemLink: 'https://creem.io/pay/your-store/50', // Replace with actual Creem.io link
+      paypalLink: 'https://www.paypal.com/ncp/payment/SVHRUH3LJJL640', // Replace with actual PayPal link
+      creemLink: 'https://www.creem.io/payment/prod_6qXRLWHFQQmHSjKKKNK87D', // Replace with actual Creem.io link
       description: 'Most popular choice for regular users'
     },
     {
       amount: 100,
       credits: 100,
       popular: false,
-      paypalLink: 'https://paypal.me/yourstore/100', // Replace with actual PayPal link
-      creemLink: 'https://creem.io/pay/your-store/100', // Replace with actual Creem.io link
+      paypalLink: 'https://www.paypal.com/ncp/payment/LYEXERLJ7ENTE', // Replace with actual PayPal link
+      creemLink: 'https://www.creem.io/payment/prod_4pVvvZGzoipEUzbG1SD7b1', // Replace with actual Creem.io link
       description: 'Best value for power users'
     }
   ]
