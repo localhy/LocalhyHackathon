@@ -201,6 +201,8 @@ export interface Idea {
   tags?: string[] | null
   location?: string | null
   user_profiles?: UserProfile
+  bookmarked_by_user?: boolean
+  liked_by_user?: boolean
 }
 
 export interface CreateIdeaData {
@@ -302,7 +304,7 @@ export const deleteIdea = async (ideaId: string): Promise<boolean> => {
   }
 }
 
-export const getIdeas = async (limit = 10, offset = 0): Promise<Idea[]> => {
+export const getIdeas = async (limit = 10, offset = 0, currentUserId?: string): Promise<Idea[]> => {
   try {
     const { data, error } = await supabase
       .from('ideas')
@@ -323,6 +325,36 @@ export const getIdeas = async (limit = 10, offset = 0): Promise<Idea[]> => {
     if (error) {
       console.error('Error fetching ideas:', error)
       return []
+    }
+
+    // Add bookmark and like status for current user
+    if (currentUserId && data) {
+      const ideasWithUserData = await Promise.all(
+        data.map(async (idea) => {
+          // Check if user bookmarked this idea
+          const { data: bookmark } = await supabase
+            .from('idea_bookmarks')
+            .select('id')
+            .eq('idea_id', idea.id)
+            .eq('user_id', currentUserId)
+            .single()
+
+          // Check if user liked this idea
+          const { data: like } = await supabase
+            .from('idea_likes')
+            .select('id')
+            .eq('idea_id', idea.id)
+            .eq('user_id', currentUserId)
+            .single()
+
+          return {
+            ...idea,
+            bookmarked_by_user: !!bookmark,
+            liked_by_user: !!like
+          }
+        })
+      )
+      return ideasWithUserData
     }
 
     return data || []
@@ -812,6 +844,9 @@ export interface ReferralJob {
   cta_text?: string | null
   terms?: string | null
   user_profiles?: UserProfile
+  bookmarked_by_user?: boolean
+  liked_by_user?: boolean
+  likes?: number
 }
 
 export interface CreateReferralJobData {

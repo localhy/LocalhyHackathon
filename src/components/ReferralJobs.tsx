@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, MapPin, DollarSign, Clock, Users, Search, Filter, ChevronDown, User, Building, AlertCircle, Calendar, Share2, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, X, Send, Check, Loader, Globe, FileText } from 'lucide-react'
+import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Building, Users, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
@@ -154,7 +154,7 @@ const ContactModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, is
         {success ? (
           <div className="text-center py-8">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="h-8 w-8 text-green-500" />
+              <MessageCircle className="h-8 w-8 text-green-500" />
             </div>
             <h4 className="text-lg font-semibold text-gray-900 mb-2">Application Sent!</h4>
             <p className="text-gray-600">Your application has been sent to the business owner.</p>
@@ -193,7 +193,7 @@ const ContactModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, is
 
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-red-500" />
+                <X className="h-4 w-4 text-red-500" />
                 <p className="text-red-700 text-sm">{error}</p>
               </div>
             )}
@@ -226,7 +226,7 @@ const ContactModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, is
               >
                 {sending ? (
                   <>
-                    <Loader className="h-4 w-4 animate-spin" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Sending...</span>
                   </>
                 ) : (
@@ -442,6 +442,46 @@ const ReferralJobs = () => {
   const handleShare = (job: ReferralJob, event: React.MouseEvent) => {
     event.stopPropagation()
     setShareJob(job)
+  }
+
+  const handleBookmark = async (jobId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (!user) return
+
+    try {
+      // TODO: Implement bookmark functionality with database
+      console.log('Bookmark job:', jobId)
+      // Update local state optimistically
+      setJobs(prev => prev.map(job => 
+        job.id === jobId 
+          ? { ...job, bookmarked_by_user: !job.bookmarked_by_user }
+          : job
+      ))
+    } catch (error) {
+      console.error('Error bookmarking job:', error)
+    }
+  }
+
+  const handleQuickLike = async (jobId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (!user) return
+
+    try {
+      // TODO: Implement like functionality with database
+      console.log('Like job:', jobId)
+      // Update local state optimistically
+      setJobs(prev => prev.map(job => 
+        job.id === jobId 
+          ? { 
+              ...job, 
+              liked_by_user: !job.liked_by_user,
+              likes: job.liked_by_user ? (job.likes || 0) - 1 : (job.likes || 0) + 1
+            }
+          : job
+      ))
+    } catch (error) {
+      console.error('Error liking job:', error)
+    }
   }
 
   const getUrgencyColor = (urgency: string) => {
@@ -758,6 +798,8 @@ const ReferralJobs = () => {
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {jobs.map((job, index) => {
                     const isLastItem = index === jobs.length - 1
+                    const isBookmarked = job.bookmarked_by_user || false
+                    const isLiked = job.liked_by_user || false
                     
                     return (
                       <div
@@ -766,114 +808,97 @@ const ReferralJobs = () => {
                         className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group"
                         onClick={() => handleViewJob(job)}
                       >
-                        {/* Header with badges */}
-                        <div className="p-6 pb-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                {job.category}
-                              </span>
-                              <span className={`text-xs px-2 py-1 rounded-full ${getUrgencyColor(job.urgency)}`}>
-                                {job.urgency} Priority
-                              </span>
-                              {job.referral_type && (
-                                <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                                  {job.referral_type}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center text-green-600 font-bold">
-                              {job.commission_type === 'percentage' ? (
-                                <span>{job.commission}%</span>
-                              ) : (
-                                <>
-                                  <DollarSign className="h-4 w-4" />
-                                  <span>{job.commission}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Business info with logo */}
-                          <div className="flex items-center space-x-3 mb-3">
-                            {job.logo_url ? (
-                              <img
-                                src={job.logo_url}
-                                alt={job.business_name}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                <Building className="h-4 w-4 text-white" />
+                        {/* Thumbnail Image - 16:9 ratio */}
+                        <div className="relative h-48 bg-gradient-to-br from-blue-100 to-blue-200 overflow-hidden">
+                          {job.logo_url ? (
+                            <img
+                              src={job.logo_url}
+                              alt={job.business_name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                                  <Building className="h-8 w-8 text-blue-600" />
+                                </div>
+                                <p className="text-blue-700 font-medium text-sm">
+                                  {job.category}
+                                </p>
                               </div>
-                            )}
-                            <div>
-                              <h3 
-                                className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors"
-                                style={{ fontFamily: 'Montserrat' }}
-                              >
-                                {job.title}
-                              </h3>
-                              <p 
-                                className="text-blue-600 font-medium text-sm"
-                                style={{ fontFamily: 'Inter' }}
-                              >
-                                {job.business_name}
-                              </p>
                             </div>
+                          )}
+                          
+                          {/* Bookmark Icon - Top right */}
+                          <button
+                            onClick={(e) => handleBookmark(job.id, e)}
+                            className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            {isBookmarked ? (
+                              <BookmarkCheck className="h-4 w-4 text-blue-600" />
+                            ) : (
+                              <Bookmark className="h-4 w-4 text-gray-600" />
+                            )}
+                          </button>
+                          
+                          {/* Commission overlay */}
+                          <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
+                            {job.commission_type === 'percentage' ? (
+                              <span>{job.commission}%</span>
+                            ) : (
+                              <>
+                                <DollarSign className="h-3 w-3" />
+                                <span>{job.commission}</span>
+                              </>
+                            )}
                           </div>
                           
+                          {/* Category badge - bottom left */}
+                          <div className="absolute bottom-3 left-3 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                            {job.category}
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6">
+                          {/* Title - 1 line max, bold, clickable */}
+                          <h3 
+                            className="text-lg font-bold text-gray-900 mb-3 line-clamp-1 group-hover:text-blue-600 transition-colors"
+                            style={{ fontFamily: 'Montserrat' }}
+                          >
+                            {job.title}
+                          </h3>
+                          
+                          {/* Business name */}
                           <p 
-                            className="text-gray-600 text-sm mb-4 line-clamp-3"
+                            className="text-blue-600 font-medium text-sm mb-3"
+                            style={{ fontFamily: 'Inter' }}
+                          >
+                            {job.business_name}
+                          </p>
+                          
+                          {/* Description - Max 3 lines */}
+                          <p 
+                            className="text-gray-600 text-sm line-clamp-3 mb-4"
                             style={{ fontFamily: 'Inter' }}
                           >
                             {job.description}
                           </p>
                           
-                          {/* Location and applicants */}
-                          <div className="space-y-2 mb-4">
-                            <div className="flex items-center text-sm text-gray-500">
-                              <MapPin className="h-4 w-4 mr-2" />
+                          {/* Location and urgency */}
+                          <div className="flex items-center space-x-4 mb-4 text-sm text-gray-500">
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="h-4 w-4" />
                               <span>{job.location}</span>
                             </div>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Users className="h-4 w-4 mr-2" />
-                              <span>{job.applicants_count} applicants</span>
-                            </div>
-                            {job.website && (
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Globe className="h-4 w-4 mr-2" />
-                                <a 
-                                  href={job.website} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-700 truncate"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {job.website}
-                                </a>
-                              </div>
-                            )}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(job.urgency)}`}>
+                              {job.urgency}
+                            </span>
                           </div>
-
-                          {/* Requirements */}
-                          {job.requirements && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-1">Requirements:</h4>
-                              <p className="text-xs text-gray-600 line-clamp-2">{job.requirements}</p>
-                            </div>
-                          )}
-
-                          {/* Terms */}
-                          {job.terms && (
-                            <div className="mb-4">
-                              <div className="flex items-center space-x-1 mb-1">
-                                <FileText className="h-3 w-3 text-gray-500" />
-                                <h4 className="text-sm font-medium text-gray-700">Terms:</h4>
-                              </div>
-                              <p className="text-xs text-gray-600 line-clamp-2">{job.terms}</p>
-                            </div>
-                          )}
                           
                           {/* Author and timestamp */}
                           <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
@@ -894,23 +919,48 @@ const ReferralJobs = () => {
                             <span>{formatTimeAgo(job.created_at)}</span>
                           </div>
                           
-                          {/* CTA and action buttons */}
+                          {/* Bottom row: Engagement metrics + Actions */}
                           <div className="flex items-center justify-between">
-                            <button
-                              onClick={(e) => handleShare(job, e)}
-                              className="text-gray-500 hover:text-blue-600 transition-colors"
-                              title="Share"
-                            >
-                              <Share2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              {/* Like count with quick like */}
+                              <button
+                                onClick={(e) => handleQuickLike(job.id, e)}
+                                className={`flex items-center space-x-1 transition-colors ${
+                                  isLiked ? 'text-red-500' : 'hover:text-red-500'
+                                }`}
+                              >
+                                <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+                                <span>{job.likes || 0}</span>
+                              </button>
+                              
+                              <div className="flex items-center space-x-1">
+                                <Users className="h-4 w-4" />
+                                <span>{job.applicants_count}</span>
+                              </div>
+                              
+                              <button
+                                onClick={(e) => handleShare(job, e)}
+                                className="text-gray-500 hover:text-blue-600 transition-colors"
+                                title="Share"
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </button>
+                            </div>
                             
-                            <button
-                              onClick={(e) => handleApplyJob(job, e)}
-                              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-105"
-                              style={{ fontFamily: 'Inter' }}
-                            >
-                              {job.cta_text || 'Apply Now'}
-                            </button>
+                            {/* Action buttons */}
+                            <div className="flex items-center space-x-2">
+                              {/* Read More button */}
+                              <button 
+                                className="bg-blue-500 text-white hover:bg-blue-600 font-medium text-sm px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-1"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleViewJob(job)
+                                }}
+                              >
+                                <DollarSign className="h-3 w-3" />
+                                <span>Read More</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
