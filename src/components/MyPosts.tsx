@@ -312,7 +312,7 @@ const MyPosts = () => {
           <div className="max-w-6xl mx-auto">
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
                   onClick={() => {
                     setError('')
