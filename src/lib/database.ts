@@ -641,7 +641,7 @@ export const getIdeas = async (limit = 10, offset = 0, currentUserId?: string): 
             .select('id')
             .eq('idea_id', idea.id)
             .eq('user_id', currentUserId)
-            .single()
+            .maybeSingle()
 
           // Check if user liked this idea
           const { data: like } = await supabase
@@ -649,7 +649,7 @@ export const getIdeas = async (limit = 10, offset = 0, currentUserId?: string): 
             .select('id')
             .eq('idea_id', idea.id)
             .eq('user_id', currentUserId)
-            .single()
+            .maybeSingle()
 
           return {
             ...idea,
@@ -734,7 +734,7 @@ export const bookmarkIdea = async (ideaId: string, userId: string): Promise<bool
       .select('id')
       .eq('idea_id', ideaId)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     if (existingBookmark) {
       // Remove bookmark
@@ -778,7 +778,7 @@ export const likeIdea = async (ideaId: string, userId: string): Promise<boolean>
       .select('id')
       .eq('idea_id', ideaId)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     if (existingLike) {
       // Unlike - remove the like
@@ -1046,7 +1046,7 @@ export const likeComment = async (commentId: string, userId: string): Promise<bo
       .select('id')
       .eq('comment_id', commentId)
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     if (existingLike) {
       // Unlike - remove the like
