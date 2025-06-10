@@ -406,9 +406,6 @@ const ReferralJobs = () => {
       case 'create-new':
         navigate('/dashboard/create-new?tab=referral')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         navigate('/dashboard/my-posts')
         break
@@ -434,8 +431,7 @@ const ReferralJobs = () => {
   }
 
   const handleViewJob = (job: ReferralJob) => {
-    // TODO: Navigate to job detail page when implemented
-    console.log('View job:', job.id)
+    navigate(`/dashboard/referral-jobs/${job.id}`)
   }
 
   const handleApplyJob = (job: ReferralJob, event: React.MouseEvent) => {
@@ -787,10 +783,14 @@ const ReferralJobs = () => {
                               )}
                             </div>
                             <div className="flex items-center text-green-600 font-bold">
-                              <DollarSign className="h-4 w-4" />
-                              <span>
-                                {job.commission_type === 'percentage' ? `${job.commission}%` : `$${job.commission}`}
-                              </span>
+                              {job.commission_type === 'percentage' ? (
+                                <span>{job.commission}%</span>
+                              ) : (
+                                <>
+                                  <DollarSign className="h-4 w-4" />
+                                  <span>{job.commission}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                           

@@ -16,16 +16,14 @@ import IdeasVault from './components/IdeasVault';
 import IdeaDetail from './components/IdeaDetail';
 import EditIdeaDetail from './components/EditIdeaDetail';
 import ReferralJobs from './components/ReferralJobs';
+import ReferralJobDetail from './components/ReferralJobDetail';
 import StarterTools from './components/StarterTools';
 import CreatePost from './components/CreatePost';
-import ToolSubmission from './components/ToolSubmission';
 import MyPosts from './components/MyPosts';
 import VaultStats from './components/VaultStats';
 import Wallet from './components/Wallet';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
-import Notifications from './components/Notifications';
-import Messages from './components/Messages';
 
 const LandingPage = () => (
   <div className="min-h-screen bg-white">
@@ -131,6 +129,14 @@ function App() {
             } 
           />
           <Route 
+            path="/dashboard/referral-jobs/:id" 
+            element={
+              <ProtectedRoute>
+                <ReferralJobDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/dashboard/starter-tools" 
             element={
               <ProtectedRoute>
@@ -151,14 +157,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreatePost />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/tool-submission" 
-            element={
-              <ProtectedRoute>
-                <ToolSubmission />
               </ProtectedRoute>
             } 
           />
@@ -199,22 +197,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/notifications" 
-            element={
-              <ProtectedRoute>
-                <Notifications />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/messages" 
-            element={
-              <ProtectedRoute>
-                <Messages />
               </ProtectedRoute>
             } 
           />
