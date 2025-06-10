@@ -35,7 +35,7 @@ const Wallet = () => {
       amount: 50,
       credits: 50,
       popular: true,
-      paypalLink: 'https://www.paypal.com/ncp/payment/SVHRUH3LJJL640', // Replace with actual PayPal link
+      paypalLink: 'https://www.paypal.com/ncp/payment/SVHRUH3LJJL64', // Replace with actual PayPal link
       creemLink: 'https://www.creem.io/payment/prod_6qXRLWHFQQmHSjKKKNK87D', // Replace with actual Creem.io link
       description: 'Most popular choice for regular users'
     },
