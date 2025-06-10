@@ -10,6 +10,7 @@ export interface UserProfile {
   avatar_url?: string
   newsletter_opt_in?: boolean
   credits?: number
+  fiat_balance?: number
   created_at: string
   updated_at: string
 }
@@ -27,7 +28,7 @@ export interface UpdateProfileData {
 export interface Transaction {
   id: string
   user_id: string
-  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund'
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion'
   amount: number
   credits: number
   currency: string
@@ -42,7 +43,7 @@ export interface Transaction {
 
 export interface CreateTransactionData {
   user_id: string
-  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund'
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion'
   amount: number
   credits: number
   description: string
@@ -231,6 +232,26 @@ export const getUserCredits = async (userId: string): Promise<number> => {
   }
 }
 
+export const getUserFiatBalance = async (userId: string): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('fiat_balance')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user fiat balance:', error)
+      return 0
+    }
+
+    return data?.fiat_balance || 0
+  } catch (error) {
+    console.error('Error in getUserFiatBalance:', error)
+    return 0
+  }
+}
+
 export const getUserTransactions = async (userId: string, limit = 50, offset = 0): Promise<Transaction[]> => {
   try {
     const { data, error } = await supabase
@@ -336,11 +357,84 @@ export const deductCreditsFromUser = async (
   }
 }
 
+export const transferCreditsToFiatBalance = async (
+  userId: string,
+  creditsToConvert: number
+): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.rpc('transfer_earned_credits_to_fiat_balance', {
+      p_user_id: userId,
+      p_credits_to_convert: creditsToConvert
+    })
+
+    if (error) {
+      console.error('Error converting credits to fiat:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in transferCreditsToFiatBalance:', error)
+    throw error
+  }
+}
+
+export const processWithdrawal = async (
+  userId: string,
+  withdrawalAmount: number
+): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.rpc('process_withdrawal', {
+      p_user_id: userId,
+      p_withdrawal_amount: withdrawalAmount
+    })
+
+    if (error) {
+      console.error('Error processing withdrawal:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in processWithdrawal:', error)
+    throw error
+  }
+}
+
+export const purchaseContent = async (
+  buyerUserId: string,
+  creatorUserId: string,
+  contentId: string,
+  contentType: string,
+  priceInCredits: number
+): Promise<any> => {
+  try {
+    const { data, error } = await supabase.rpc('purchase_content', {
+      p_buyer_user_id: buyerUserId,
+      p_creator_user_id: creatorUserId,
+      p_content_id: contentId,
+      p_content_type: contentType,
+      p_price_in_credits: priceInCredits
+    })
+
+    if (error) {
+      console.error('Error purchasing content:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in purchaseContent:', error)
+    throw error
+  }
+}
+
 export const getWalletStats = async (userId: string) => {
   try {
-    // Get current credits
+    // Get current credits and fiat balance
     const profile = await getUserProfile(userId)
     const currentCredits = profile?.credits || 0
+    const fiatBalance = profile?.fiat_balance || 0
 
     // Get transaction stats
     const { data: stats, error } = await supabase
@@ -353,6 +447,7 @@ export const getWalletStats = async (userId: string) => {
       console.error('Error fetching wallet stats:', error)
       return {
         currentCredits,
+        fiatBalance,
         totalSpent: 0,
         totalEarned: 0,
         pendingEarnings: 0
@@ -364,19 +459,25 @@ export const getWalletStats = async (userId: string) => {
       .reduce((sum, t) => sum + Number(t.amount), 0) || 0
 
     const totalEarned = stats
-      ?.filter(t => t.type === 'credit_usage' && t.credits < 0)
-      .reduce((sum, t) => sum + Math.abs(Number(t.credits)), 0) || 0
+      ?.filter(t => t.type === 'credit_earning')
+      .reduce((sum, t) => sum + Number(t.credits), 0) || 0
+
+    const pendingWithdrawals = stats
+      ?.filter(t => t.type === 'withdrawal' && t.status === 'pending')
+      .reduce((sum, t) => sum + Number(t.amount), 0) || 0
 
     return {
       currentCredits,
+      fiatBalance,
       totalSpent,
       totalEarned,
-      pendingEarnings: 0 // This would be calculated based on pending transactions
+      pendingEarnings: pendingWithdrawals
     }
   } catch (error) {
     console.error('Error in getWalletStats:', error)
     return {
       currentCredits: 0,
+      fiatBalance: 0,
       totalSpent: 0,
       totalEarned: 0,
       pendingEarnings: 0
@@ -1570,6 +1671,22 @@ export const subscribeToUserMessages = (userId: string, callback: (payload: any)
         schema: 'public',
         table: 'messages',
         filter: `sender_id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe()
+}
+
+export const subscribeToUserProfile = (userId: string, callback: (payload: any) => void) => {
+  return supabase
+    .channel('user-profile')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'user_profiles',
+        filter: `id=eq.${userId}`
       },
       callback
     )
