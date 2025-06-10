@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, Heart, MessageCircle, Share2, User, Calendar, MapPin, Tag, DollarSign, Send, X, Copy, Mail, Facebook, Twitter, Linkedin, Phone, ExternalLink, ThumbsUp, Reply, MoreVertical, Flag, AlertCircle, Check, Loader } from 'lucide-react'
+import { ArrowLeft, Eye, Heart, MessageCircle, Share2, User, Calendar, MapPin, Tag, DollarSign, Send, X, Copy, Mail, Facebook, Twitter, Linkedin, Phone, ExternalLink, ThumbsUp, Reply, MoreVertical, Flag, AlertCircle, Check, Loader, Lock, CreditCard } from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getIdeaById, getUserProfile, createMessage, getIdeaComments, createComment, likeComment, reportComment, type Idea } from '../lib/database'
+import { getIdeaById, getUserProfile, createMessage, getIdeaComments, createComment, likeComment, reportComment, purchaseContent, getUserCredits, type Idea } from '../lib/database'
 
 // Comment interface
 interface Comment {
@@ -249,6 +249,145 @@ const MessageModal = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisib
   )
 }
 
+// Pay to Read modal component
+const PayToReadModal = ({ idea, isVisible, onClose, onPurchase }: { 
+  idea: Idea | null, 
+  isVisible: boolean, 
+  onClose: () => void,
+  onPurchase: () => void 
+}) => {
+  const { user } = useAuth()
+  const [userCredits, setUserCredits] = useState(0)
+  const [purchasing, setPurchasing] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const loadUserCredits = async () => {
+      if (user) {
+        const credits = await getUserCredits(user.id)
+        setUserCredits(credits)
+      }
+    }
+    
+    if (isVisible) {
+      loadUserCredits()
+    }
+  }, [user, isVisible])
+
+  if (!idea || !isVisible) return null
+
+  const handlePurchase = async () => {
+    if (!user || userCredits < idea.price) return
+
+    setPurchasing(true)
+    setError('')
+
+    try {
+      await purchaseContent(user.id, idea.user_id, idea.id, 'idea', idea.price)
+      onPurchase()
+      onClose()
+    } catch (error: any) {
+      setError(error.message || 'Failed to purchase content. Please try again.')
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
+  const canAfford = userCredits >= idea.price
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold" style={{ fontFamily: 'Montserrat' }}>
+            Premium Content
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="h-8 w-8 text-green-600" />
+          </div>
+          <h4 className="text-xl font-semibold text-gray-900 mb-2" style={{ fontFamily: 'Montserrat' }}>
+            {idea.title}
+          </h4>
+          <p className="text-gray-600 mb-4" style={{ fontFamily: 'Inter' }}>
+            This premium idea requires {idea.price} credits to unlock the full content.
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center space-x-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        )}
+
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">Your Credits:</span>
+            <span className="font-semibold text-gray-900">{userCredits}</span>
+          </div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">Cost:</span>
+            <span className="font-semibold text-gray-900">{idea.price} credits</span>
+          </div>
+          <div className="border-t pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">After Purchase:</span>
+              <span className={`font-semibold ${canAfford ? 'text-green-600' : 'text-red-600'}`}>
+                {canAfford ? userCredits - idea.price : 'Insufficient credits'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex space-x-3">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          {canAfford ? (
+            <button
+              onClick={handlePurchase}
+              disabled={purchasing}
+              className="flex-1 bg-green-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-600 disabled:bg-gray-300 flex items-center justify-center space-x-2"
+            >
+              {purchasing ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin" />
+                  <span>Purchasing...</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4" />
+                  <span>Pay {idea.price} Credits</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                onClose()
+                window.location.href = '/dashboard/wallet?tab=purchase'
+              }}
+              className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-600 flex items-center justify-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Buy Credits</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Comment component
 const CommentComponent = ({ comment, onReply, onLike, onReport, depth = 0 }: {
   comment: Comment
@@ -419,14 +558,16 @@ const CommentComponent = ({ comment, onReply, onLike, onReport, depth = 0 }: {
 const IdeaDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [idea, setIdea] = useState<Idea | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [messageModalOpen, setMessageModalOpen] = useState(false)
+  const [payToReadModalOpen, setPayToReadModalOpen] = useState(false)
   const [liked, setLiked] = useState(false)
+  const [hasAccess, setHasAccess] = useState(false)
   
   // Author profile state
   const [authorProfile, setAuthorProfile] = useState<any>(null)
@@ -452,6 +593,11 @@ const IdeaDetail = () => {
         const fetchedIdea = await getIdeaById(id)
         if (fetchedIdea) {
           setIdea(fetchedIdea)
+          
+          // Check if user has access to this content
+          const userHasAccess = checkUserAccess(fetchedIdea)
+          setHasAccess(userHasAccess)
+          
           // Load author profile and comments
           loadAuthorProfile(fetchedIdea.user_id)
           loadComments(fetchedIdea.id)
@@ -467,7 +613,20 @@ const IdeaDetail = () => {
     }
 
     loadIdea()
-  }, [id])
+  }, [id, user])
+
+  const checkUserAccess = (idea: Idea): boolean => {
+    // User owns the idea
+    if (user && idea.user_id === user.id) return true
+    
+    // Idea is free
+    if (idea.price === 0) return true
+    
+    // TODO: Check if user has already purchased this idea
+    // This would require a database query to check purchases
+    // For now, we'll assume they haven't purchased it if it's paid
+    return false
+  }
 
   const loadAuthorProfile = async (userId: string) => {
     setLoadingAuthor(true)
@@ -565,6 +724,16 @@ const IdeaDetail = () => {
 
   const handleMessage = () => {
     setMessageModalOpen(true)
+  }
+
+  const handlePayToRead = () => {
+    setPayToReadModalOpen(true)
+  }
+
+  const handlePurchaseComplete = async () => {
+    setHasAccess(true)
+    // Refresh user data to update credits
+    await refreshUser()
   }
 
   const handlePostComment = async () => {
@@ -742,8 +911,9 @@ const IdeaDetail = () => {
             
             {/* Price badge */}
             {idea.price > 0 && (
-              <div className="absolute top-6 right-6 bg-green-500 text-white px-4 py-2 rounded-full font-bold">
-                ${idea.price}
+              <div className="absolute top-6 right-6 bg-green-500 text-white px-4 py-2 rounded-full font-bold flex items-center space-x-1">
+                <Lock className="h-4 w-4" />
+                <span>${idea.price}</span>
               </div>
             )}
           </div>
@@ -766,6 +936,28 @@ const IdeaDetail = () => {
           </div>
         </div>
 
+        {/* Access Control Notice */}
+        {!hasAccess && idea.price > 0 && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 lg:px-6 py-4">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Lock className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <p className="font-medium text-yellow-800">Premium Content</p>
+                  <p className="text-sm text-yellow-700">This idea requires {idea.price} credits to view the full content.</p>
+                </div>
+              </div>
+              <button
+                onClick={handlePayToRead}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                <CreditCard className="h-4 w-4" />
+                <span>Pay to Read</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="flex-1 p-4 lg:p-6">
           <div className="max-w-4xl mx-auto">
@@ -775,7 +967,7 @@ const IdeaDetail = () => {
                 {/* Article Content */}
                 <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
                   {/* Problem Summary */}
-                  {idea.problem_summary && (
+                  {idea.problem_summary && (hasAccess || idea.price === 0) && (
                     <div className="mb-8">
                       <h2 
                         className="text-xl font-bold text-gray-900 mb-4"
@@ -793,7 +985,7 @@ const IdeaDetail = () => {
                   )}
 
                   {/* Solution Overview */}
-                  {idea.solution_overview && (
+                  {idea.solution_overview && (hasAccess || idea.price === 0) && (
                     <div className="mb-8">
                       <h2 
                         className="text-xl font-bold text-gray-900 mb-4"
@@ -816,22 +1008,52 @@ const IdeaDetail = () => {
                       className="text-xl font-bold text-gray-900 mb-4"
                       style={{ fontFamily: 'Montserrat' }}
                     >
-                      Detailed Overview
+                      {hasAccess || idea.price === 0 ? 'Detailed Overview' : 'Preview'}
                     </h2>
                     <div 
                       className="prose prose-gray max-w-none"
                       style={{ fontFamily: 'Inter' }}
                     >
-                      {idea.description.split('\n').map((paragraph, index) => (
-                        <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                          {paragraph}
-                        </p>
-                      ))}
+                      {hasAccess || idea.price === 0 ? (
+                        // Show full content
+                        idea.description.split('\n').map((paragraph, index) => (
+                          <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                            {paragraph}
+                          </p>
+                        ))
+                      ) : (
+                        // Show preview only
+                        <div>
+                          <p className="mb-4 text-gray-700 leading-relaxed">
+                            {idea.description.substring(0, 200)}...
+                          </p>
+                          <div className="bg-gradient-to-t from-white to-transparent p-6 -m-6 mt-0">
+                            <div className="text-center">
+                              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Lock className="h-8 w-8 text-yellow-600" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                Premium Content Locked
+                              </h3>
+                              <p className="text-gray-600 mb-4">
+                                Unlock the full business idea for {idea.price} credits
+                              </p>
+                              <button
+                                onClick={handlePayToRead}
+                                className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2 mx-auto"
+                              >
+                                <CreditCard className="h-4 w-4" />
+                                <span>Pay {idea.price} Credits</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Tags */}
-                  {idea.tags && idea.tags.length > 0 && (
+                  {idea.tags && idea.tags.length > 0 && (hasAccess || idea.price === 0) && (
                     <div className="border-t border-gray-200 pt-6">
                       <h3 
                         className="text-lg font-semibold text-gray-900 mb-3"
@@ -854,108 +1076,110 @@ const IdeaDetail = () => {
                   )}
                 </div>
 
-                {/* Comments Section */}
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Comments ({comments.length})
-                  </h2>
-                  
-                  {/* Post new comment */}
-                  {user && (
-                    <div className="mb-8 pb-6 border-b border-gray-200">
-                      <div className="flex space-x-3">
-                        {user.user_metadata?.avatar_url ? (
-                          <img
-                            src={user.user_metadata.avatar_url}
-                            alt="Your avatar"
-                            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <User className="h-5 w-5 text-white" />
-                          </div>
-                        )}
-                        
-                        <div className="flex-1">
-                          <textarea
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
-                            placeholder="Share your thoughts about this idea..."
-                            style={{ fontFamily: 'Inter' }}
-                          />
-                          <div className="flex justify-end mt-3">
-                            <button
-                              onClick={handlePostComment}
-                              disabled={!newComment.trim() || postingComment}
-                              className="bg-green-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-600 disabled:bg-gray-300 flex items-center space-x-2"
-                            >
-                              {postingComment ? (
-                                <>
-                                  <Loader className="h-4 w-4 animate-spin" />
-                                  <span>Posting...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <MessageCircle className="h-4 w-4" />
-                                  <span>Post Comment</span>
-                                </>
-                              )}
-                            </button>
+                {/* Comments Section - Only show if user has access */}
+                {(hasAccess || idea.price === 0) && (
+                  <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
+                    <h2 
+                      className="text-xl font-bold text-gray-900 mb-6"
+                      style={{ fontFamily: 'Montserrat' }}
+                    >
+                      Comments ({comments.length})
+                    </h2>
+                    
+                    {/* Post new comment */}
+                    {user && (
+                      <div className="mb-8 pb-6 border-b border-gray-200">
+                        <div className="flex space-x-3">
+                          {user.user_metadata?.avatar_url ? (
+                            <img
+                              src={user.user_metadata.avatar_url}
+                              alt="Your avatar"
+                              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User className="h-5 w-5 text-white" />
+                            </div>
+                          )}
+                          
+                          <div className="flex-1">
+                            <textarea
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                              placeholder="Share your thoughts about this idea..."
+                              style={{ fontFamily: 'Inter' }}
+                            />
+                            <div className="flex justify-end mt-3">
+                              <button
+                                onClick={handlePostComment}
+                                disabled={!newComment.trim() || postingComment}
+                                className="bg-green-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-600 disabled:bg-gray-300 flex items-center space-x-2"
+                              >
+                                {postingComment ? (
+                                  <>
+                                    <Loader className="h-4 w-4 animate-spin" />
+                                    <span>Posting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <MessageCircle className="h-4 w-4" />
+                                    <span>Post Comment</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                  
-                  {/* Comments list */}
-                  {commentsLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse flex space-x-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    )}
+                    
+                    {/* Comments list */}
+                    {commentsLoading ? (
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse flex space-x-3">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : comments.length > 0 ? (
-                    <div className="space-y-6">
-                      {comments.map((comment) => (
-                        <CommentComponent
-                          key={comment.id}
-                          comment={comment}
-                          onReply={handleReplyToComment}
-                          onLike={handleLikeComment}
-                          onReport={handleReportComment}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <MessageCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p 
-                        className="text-gray-500 mb-2"
-                        style={{ fontFamily: 'Inter' }}
-                      >
-                        No comments yet
-                      </p>
-                      <p 
-                        className="text-gray-400 text-sm"
-                        style={{ fontFamily: 'Inter' }}
-                      >
-                        Be the first to share your thoughts!
-                      </p>
-                    </div>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    ) : comments.length > 0 ? (
+                      <div className="space-y-6">
+                        {comments.map((comment) => (
+                          <CommentComponent
+                            key={comment.id}
+                            comment={comment}
+                            onReply={handleReplyToComment}
+                            onLike={handleLikeComment}
+                            onReport={handleReportComment}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <MessageCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p 
+                          className="text-gray-500 mb-2"
+                          style={{ fontFamily: 'Inter' }}
+                        >
+                          No comments yet
+                        </p>
+                        <p 
+                          className="text-gray-400 text-sm"
+                          style={{ fontFamily: 'Inter' }}
+                        >
+                          Be the first to share your thoughts!
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Sidebar */}
@@ -1123,17 +1347,27 @@ const IdeaDetail = () => {
                 {/* Actions */}
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                   <div className="space-y-3">
-                    <button 
-                      onClick={handleLike}
-                      className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors ${
-                        liked 
-                          ? 'bg-red-500 text-white hover:bg-red-600' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600'
-                      }`}
-                    >
-                      <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
-                      <span>{liked ? 'Liked' : 'Like this Idea'}</span>
-                    </button>
+                    {!hasAccess && idea.price > 0 ? (
+                      <button 
+                        onClick={handlePayToRead}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>Pay {idea.price} Credits to Read</span>
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleLike}
+                        className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors ${
+                          liked 
+                            ? 'bg-red-500 text-white hover:bg-red-600' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600'
+                        }`}
+                      >
+                        <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
+                        <span>{liked ? 'Liked' : 'Like this Idea'}</span>
+                      </button>
+                    )}
                     <button 
                       onClick={handleShare}
                       className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
@@ -1160,6 +1394,13 @@ const IdeaDetail = () => {
         idea={idea} 
         isVisible={messageModalOpen} 
         onClose={() => setMessageModalOpen(false)} 
+      />
+
+      <PayToReadModal 
+        idea={idea} 
+        isVisible={payToReadModalOpen} 
+        onClose={() => setPayToReadModalOpen(false)} 
+        onPurchase={handlePurchaseComplete}
       />
 
       {sidebarOpen && (

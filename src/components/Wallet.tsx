@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Wallet as WalletIcon, DollarSign, TrendingUp, Download, Plus, CreditCard, ExternalLink, Clock, CheckCircle, XCircle, AlertCircle, Copy, Eye, EyeOff } from 'lucide-react'
+import { Wallet as WalletIcon, DollarSign, TrendingUp, Download, Plus, CreditCard, ExternalLink, Clock, CheckCircle, XCircle, AlertCircle, Copy, Eye, EyeOff, ArrowUpRight, Banknote } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserProfile, getUserTransactions, getWalletStats, type Transaction } from '../lib/database'
+import { getUserProfile, getUserTransactions, getWalletStats, transferCreditsToFiatBalance, processWithdrawal, type Transaction } from '../lib/database'
 
 const Wallet = () => {
   const navigate = useNavigate()
@@ -12,6 +12,7 @@ const Wallet = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [walletData, setWalletData] = useState({
     currentCredits: 0,
+    fiatBalance: 0,
     totalSpent: 0,
     totalEarned: 0,
     pendingEarnings: 0
@@ -19,7 +20,15 @@ const Wallet = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [showBalance, setShowBalance] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'purchase'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'purchase' | 'withdrawals'>('overview')
+  
+  // Withdrawal states
+  const [creditsToConvert, setCreditsToConvert] = useState(0)
+  const [withdrawAmount, setWithdrawAmount] = useState(0)
+  const [converting, setConverting] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
+  const [withdrawalError, setWithdrawalError] = useState('')
+  const [withdrawalSuccess, setWithdrawalSuccess] = useState('')
 
   // Payment links - these would be configured from your PayPal/Creem.io accounts
   const paymentOptions = [
@@ -120,6 +129,44 @@ const Wallet = () => {
     window.open(paymentLink, '_blank', 'noopener,noreferrer')
   }
 
+  const handleConvertCredits = async () => {
+    if (!user || creditsToConvert <= 0 || creditsToConvert > walletData.currentCredits) return
+
+    setConverting(true)
+    setWithdrawalError('')
+    setWithdrawalSuccess('')
+
+    try {
+      await transferCreditsToFiatBalance(user.id, creditsToConvert)
+      setWithdrawalSuccess(`Successfully converted ${creditsToConvert} credits to $${creditsToConvert.toFixed(2)} cash!`)
+      setCreditsToConvert(0)
+      await loadWalletData() // Refresh wallet data
+    } catch (error: any) {
+      setWithdrawalError(error.message || 'Failed to convert credits. Please try again.')
+    } finally {
+      setConverting(false)
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (!user || withdrawAmount <= 0 || withdrawAmount > walletData.fiatBalance) return
+
+    setWithdrawing(true)
+    setWithdrawalError('')
+    setWithdrawalSuccess('')
+
+    try {
+      await processWithdrawal(user.id, withdrawAmount)
+      setWithdrawalSuccess(`Withdrawal request for $${withdrawAmount.toFixed(2)} has been submitted!`)
+      setWithdrawAmount(0)
+      await loadWalletData() // Refresh wallet data
+    } catch (error: any) {
+      setWithdrawalError(error.message || 'Failed to process withdrawal. Please try again.')
+    } finally {
+      setWithdrawing(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -140,7 +187,9 @@ const Wallet = () => {
       case 'credit_usage':
         return <Download className="h-4 w-4 text-blue-500" />
       case 'withdrawal':
-        return <TrendingUp className="h-4 w-4 text-purple-500" />
+        return <ArrowUpRight className="h-4 w-4 text-purple-500" />
+      case 'credit_to_fiat_conversion':
+        return <Banknote className="h-4 w-4 text-orange-500" />
       case 'refund':
         return <CheckCircle className="h-4 w-4 text-green-500" />
       default:
@@ -156,6 +205,8 @@ const Wallet = () => {
         return 'text-blue-600'
       case 'withdrawal':
         return 'text-purple-600'
+      case 'credit_to_fiat_conversion':
+        return 'text-orange-600'
       case 'refund':
         return 'text-green-600'
       default:
@@ -170,6 +221,14 @@ const Wallet = () => {
     } catch (err) {
       console.error('Failed to copy:', err)
     }
+  }
+
+  const calculateWithdrawalFee = (amount: number) => {
+    return amount * 0.15 // 15% fee
+  }
+
+  const calculateNetWithdrawal = (amount: number) => {
+    return amount - calculateWithdrawalFee(amount)
   }
 
   if (loading) {
@@ -234,7 +293,8 @@ const Wallet = () => {
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'transactions', label: 'Transactions' },
-                { id: 'purchase', label: 'Buy Credits' }
+                { id: 'purchase', label: 'Buy Credits' },
+                { id: 'withdrawals', label: 'Withdrawals' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -258,49 +318,81 @@ const Wallet = () => {
           <div className="max-w-6xl mx-auto">
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                {/* Balance Card */}
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <WalletIcon className="h-8 w-8" />
-                      <h2 
-                        className="text-xl font-semibold"
-                        style={{ fontFamily: 'Montserrat' }}
-                      >
-                        Current Balance
-                      </h2>
+                {/* Balance Cards */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Credits Balance */}
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <WalletIcon className="h-8 w-8" />
+                        <h2 
+                          className="text-xl font-semibold"
+                          style={{ fontFamily: 'Montserrat' }}
+                        >
+                          Credits Balance
+                        </h2>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setShowBalance(!showBalance)}
+                          className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+                        >
+                          {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('purchase')}
+                          className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
+                          Add Credits
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setShowBalance(!showBalance)}
-                        className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
-                      >
-                        {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                    
+                    <div className="text-3xl font-bold mb-2" style={{ fontFamily: 'Montserrat' }}>
+                      {showBalance ? `${walletData.currentCredits} Credits` : '••• Credits'}
+                    </div>
+                    
+                    <p className="text-green-100" style={{ fontFamily: 'Inter' }}>
+                      ${walletData.currentCredits.toFixed(2)} USD equivalent
+                    </p>
+                  </div>
+
+                  {/* Fiat Balance */}
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <Banknote className="h-8 w-8" />
+                        <h2 
+                          className="text-xl font-semibold"
+                          style={{ fontFamily: 'Montserrat' }}
+                        >
+                          Cash Balance
+                        </h2>
+                      </div>
                       <button 
-                        onClick={() => setActiveTab('purchase')}
+                        onClick={() => setActiveTab('withdrawals')}
                         className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-medium transition-colors"
                       >
-                        Add Credits
+                        Withdraw
                       </button>
                     </div>
+                    
+                    <div className="text-3xl font-bold mb-2" style={{ fontFamily: 'Montserrat' }}>
+                      {showBalance ? `$${walletData.fiatBalance.toFixed(2)}` : '$•••.••'}
+                    </div>
+                    
+                    <p className="text-blue-100" style={{ fontFamily: 'Inter' }}>
+                      Available for withdrawal
+                    </p>
                   </div>
-                  
-                  <div className="text-3xl font-bold mb-2" style={{ fontFamily: 'Montserrat' }}>
-                    {showBalance ? `${walletData.currentCredits} Credits` : '••• Credits'}
-                  </div>
-                  
-                  <p className="text-green-100" style={{ fontFamily: 'Inter' }}>
-                    ${walletData.currentCredits.toFixed(2)} USD equivalent
-                  </p>
                 </div>
 
                 {/* Stats Grid */}
                 <div className="grid md:grid-cols-3 gap-6">
                   <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <DollarSign className="h-5 w-5 text-blue-600" />
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
                       <h3 
                         className="font-semibold text-gray-900"
@@ -322,8 +414,8 @@ const Wallet = () => {
 
                   <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="h-5 w-5 text-blue-600" />
                       </div>
                       <h3 
                         className="font-semibold text-gray-900"
@@ -628,6 +720,250 @@ const Wallet = () => {
                   <button className="text-green-600 hover:text-green-700 font-medium text-sm">
                     Contact Support
                   </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'withdrawals' && (
+              <div className="space-y-6">
+                {/* Success/Error Messages */}
+                {(withdrawalError || withdrawalSuccess) && (
+                  <div className="space-y-4">
+                    {withdrawalError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                        <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{withdrawalError}</p>
+                      </div>
+                    )}
+                    {withdrawalSuccess && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <p className="text-green-700" style={{ fontFamily: 'Inter' }}>{withdrawalSuccess}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Convert Credits to Cash */}
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 
+                      className="text-lg font-semibold text-gray-900 mb-4"
+                      style={{ fontFamily: 'Montserrat' }}
+                    >
+                      Convert Credits to Cash
+                    </h3>
+                    
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">Available Credits: {walletData.currentCredits}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Credits to Convert
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={walletData.currentCredits}
+                        value={creditsToConvert}
+                        onChange={(e) => setCreditsToConvert(Math.max(0, Math.min(walletData.currentCredits, parseInt(e.target.value) || 0)))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="Enter credits to convert"
+                      />
+                    </div>
+
+                    <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span>Credits:</span>
+                        <span>{creditsToConvert}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-medium">
+                        <span>Cash Value:</span>
+                        <span>${creditsToConvert.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleConvertCredits}
+                      disabled={converting || creditsToConvert <= 0 || creditsToConvert > walletData.currentCredits}
+                      className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+                    >
+                      {converting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Converting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Banknote className="h-4 w-4" />
+                          <span>Convert to Cash</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Withdraw Funds */}
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 
+                      className="text-lg font-semibold text-gray-900 mb-4"
+                      style={{ fontFamily: 'Montserrat' }}
+                    >
+                      Withdraw Funds
+                    </h3>
+                    
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">Available Cash: ${walletData.fiatBalance.toFixed(2)}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Withdrawal Amount
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={walletData.fiatBalance}
+                        step="0.01"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(Math.max(0, Math.min(walletData.fiatBalance, parseFloat(e.target.value) || 0)))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter amount to withdraw"
+                      />
+                    </div>
+
+                    <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span>Withdrawal Amount:</span>
+                        <span>${withdrawAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-red-600">
+                        <span>Platform Fee (15%):</span>
+                        <span>-${calculateWithdrawalFee(withdrawAmount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-medium border-t pt-2 mt-2">
+                        <span>You'll Receive:</span>
+                        <span>${calculateNetWithdrawal(withdrawAmount).toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleWithdraw}
+                      disabled={withdrawing || withdrawAmount <= 0 || withdrawAmount > walletData.fiatBalance}
+                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+                    >
+                      {withdrawing ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpRight className="h-4 w-4" />
+                          <span>Request Withdrawal</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Payment Methods */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 mb-4"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Payment Methods
+                  </h3>
+                  <div className="text-center py-8">
+                    <CreditCard className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p 
+                      className="text-gray-500 mb-2"
+                      style={{ fontFamily: 'Inter' }}
+                    >
+                      No payment methods added
+                    </p>
+                    <p 
+                      className="text-gray-400 text-sm mb-4"
+                      style={{ fontFamily: 'Inter' }}
+                    >
+                      Add a payment method to receive withdrawals
+                    </p>
+                    <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium">
+                      Add Payment Method
+                    </button>
+                  </div>
+                </div>
+
+                {/* Past Withdrawal Requests */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 mb-4"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Withdrawal History
+                  </h3>
+                  
+                  {transactions.filter(t => t.type === 'withdrawal').length === 0 ? (
+                    <div className="text-center py-8">
+                      <ArrowUpRight className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <p 
+                        className="text-gray-500 mb-2"
+                        style={{ fontFamily: 'Inter' }}
+                      >
+                        No withdrawal requests yet
+                      </p>
+                      <p 
+                        className="text-gray-400 text-sm"
+                        style={{ fontFamily: 'Inter' }}
+                      >
+                        Your withdrawal history will appear here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {transactions.filter(t => t.type === 'withdrawal').map((transaction) => (
+                        <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
+                          <div className="flex items-center space-x-3">
+                            {getTransactionIcon(transaction.type, transaction.status)}
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm" style={{ fontFamily: 'Inter' }}>
+                                {transaction.description}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatDate(transaction.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`font-semibold text-sm ${getTransactionColor(transaction.type)}`}>
+                              ${transaction.amount.toFixed(2)}
+                            </p>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              transaction.status === 'failed' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {transaction.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Important Notes */}
+                <div className="bg-yellow-50 rounded-xl p-6 border border-yellow-200">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-yellow-900 mb-2" style={{ fontFamily: 'Inter' }}>
+                        Important Notes
+                      </h4>
+                      <ul className="text-yellow-800 text-sm space-y-1" style={{ fontFamily: 'Inter' }}>
+                        <li>• Withdrawals are processed within 3-5 business days</li>
+                        <li>• A 15% platform fee is deducted from all withdrawals</li>
+                        <li>• Minimum withdrawal amount is $10.00</li>
+                        <li>• You must add a valid payment method before requesting withdrawals</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
