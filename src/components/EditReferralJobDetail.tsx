@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit3, Save, X, Upload, DollarSign, Check, AlertCircle, Loader, Building, Globe, MapPin, Clock, Users, Star } from 'lucide-react'
+import { ArrowLeft, Edit3, Save, X, Upload, DollarSign, Check, AlertCircle, Loader, Building, Globe, MapPin, Clock, Users, Star, Camera } from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
@@ -37,7 +37,9 @@ const EditReferralJobDetail = () => {
   
   // File upload
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const logoRef = useRef<HTMLInputElement>(null)
+  const coverRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const loadJob = async () => {
@@ -250,6 +252,37 @@ const EditReferralJobDetail = () => {
     }
   }
 
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !job) return
+
+    setUploadingCover(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      // For referral jobs, we'll store the cover image in the logo_url field for now
+      // In a real implementation, you might want to add a separate cover_image_url field
+      const coverUrl = await uploadFile(file, 'business-logos')
+      
+      if (coverUrl) {
+        const updatedJob = await updateReferralJob(job.id, { logo_url: coverUrl })
+        
+        if (updatedJob) {
+          setJob(updatedJob)
+          setSuccess('Cover image updated successfully!')
+          setTimeout(() => setSuccess(''), 3000)
+        }
+      }
+    } catch (error: any) {
+      console.error('Error uploading cover image:', error)
+      setError(error.message || 'Failed to upload cover image. Please try again.')
+    } finally {
+      setUploadingCover(false)
+      if (coverRef.current) coverRef.current.value = ''
+    }
+  }
+
   const categories = [
     'Restaurant', 'Retail', 'Professional Services', 'Health & Wellness', 'Technology',
     'Real Estate', 'Education', 'Entertainment', 'Transportation', 'Home Services', 'Other'
@@ -346,9 +379,29 @@ const EditReferralJobDetail = () => {
 
         {/* Hero Section */}
         <div className="relative">
-          {/* Header Background */}
+          {/* Cover Image */}
           <div className="h-64 md:h-80 bg-gradient-to-br from-blue-100 to-blue-200 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20"></div>
+            {job.logo_url ? (
+              <img
+                src={job.logo_url}
+                alt={job.business_name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Building className="h-12 w-12 text-blue-600" />
+                  </div>
+                  <p className="text-blue-700 font-medium text-lg">
+                    Click to add cover image
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-black/40"></div>
             
             {/* Back button */}
             <button
@@ -358,8 +411,29 @@ const EditReferralJobDetail = () => {
               <ArrowLeft className="h-5 w-5" />
             </button>
             
+            {/* Edit cover image button */}
+            <button
+              onClick={() => coverRef.current?.click()}
+              disabled={uploadingCover}
+              className="absolute top-6 right-6 bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors opacity-0 group-hover:opacity-100"
+            >
+              {uploadingCover ? (
+                <Loader className="h-5 w-5 animate-spin" />
+              ) : (
+                <Camera className="h-5 w-5" />
+              )}
+            </button>
+            
+            <input
+              ref={coverRef}
+              type="file"
+              accept="image/*"
+              onChange={handleCoverUpload}
+              className="hidden"
+            />
+            
             {/* Commission badge */}
-            <div className="absolute top-6 right-6 bg-green-500 text-white px-4 py-2 rounded-full font-bold">
+            <div className="absolute bottom-6 right-6 bg-green-500 text-white px-4 py-2 rounded-full font-bold">
               {job.commission_type === 'percentage' ? `${job.commission}%` : `$${job.commission}`}
             </div>
           </div>
@@ -728,7 +802,7 @@ const EditReferralJobDetail = () => {
                 {/* Logo Management */}
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4" style={{ fontFamily: 'Montserrat' }}>
-                    Business Logo
+                    Business Logo/Thumbnail
                   </h3>
                   <div className="space-y-4">
                     {job.logo_url ? (
@@ -758,9 +832,9 @@ const EditReferralJobDetail = () => {
                           disabled={uploadingLogo}
                           className="text-blue-600 hover:text-blue-700 font-medium"
                         >
-                          {uploadingLogo ? 'Uploading...' : 'Upload logo'}
+                          {uploadingLogo ? 'Uploading...' : 'Upload thumbnail'}
                         </button>
-                        <p className="text-xs text-gray-500 mt-1">For business branding</p>
+                        <p className="text-xs text-gray-500 mt-1">For card grids (16:9 recommended)</p>
                       </div>
                     )}
                     

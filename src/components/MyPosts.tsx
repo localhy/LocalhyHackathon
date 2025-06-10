@@ -120,7 +120,13 @@ const MyPosts = () => {
 
   const handleEditPost = (type: 'idea' | 'referral' | 'tool', id: string) => {
     // Navigate to the dedicated edit page within My Posts context
-    navigate(`/dashboard/my-posts/edit/${type}/${id}`)
+    if (type === 'idea') {
+      navigate(`/dashboard/my-posts/edit/idea/${id}`)
+    } else if (type === 'referral') {
+      navigate(`/dashboard/my-posts/edit/referral/${id}`)
+    } else {
+      navigate(`/dashboard/my-posts/edit/${type}/${id}`)
+    }
   }
 
   const handleDelete = async (type: 'idea' | 'referral' | 'tool', id: string, title: string) => {
@@ -375,6 +381,16 @@ const MyPosts = () => {
                       {(post.type === 'idea' && (post as Idea).thumbnail_url) ? (
                         <img
                           src={(post as Idea).thumbnail_url!}
+                          alt={post.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      ) : (post.type === 'referral' && (post as ReferralJob).logo_url) ? (
+                        <img
+                          src={(post as ReferralJob).logo_url!}
                           alt={post.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {

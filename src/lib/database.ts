@@ -961,7 +961,7 @@ export const deleteReferralJob = async (jobId: string): Promise<boolean> => {
   }
 }
 
-export const getReferralJobs = async (limit = 10, offset = 0): Promise<ReferralJob[]> => {
+export const getReferralJobs = async (limit = 10, offset = 0, currentUserId?: string): Promise<ReferralJob[]> => {
   try {
     const { data, error } = await supabase
       .from('referral_jobs')
@@ -980,6 +980,18 @@ export const getReferralJobs = async (limit = 10, offset = 0): Promise<ReferralJ
     if (error) {
       console.error('Error fetching referral jobs:', error)
       return []
+    }
+
+    // Add bookmark and like status for current user if provided
+    if (currentUserId && data) {
+      // In a real implementation, you would have referral_job_bookmarks and referral_job_likes tables
+      // For now, we'll just return the data without user-specific flags
+      return data.map(job => ({
+        ...job,
+        bookmarked_by_user: false,
+        liked_by_user: false,
+        likes: 0 // Default value
+      }))
     }
 
     return data || []
@@ -1359,4 +1371,29 @@ export const subscribeToUserMessages = (userId: string, callback: (payload: any)
       callback
     )
     .subscribe()
+}
+
+// Referral job bookmarks and likes
+export const bookmarkReferralJob = async (jobId: string, userId: string): Promise<boolean> => {
+  try {
+    // This is a placeholder for future implementation
+    // In a real app, you would have a referral_job_bookmarks table
+    console.log(`Bookmarking job ${jobId} for user ${userId}`)
+    return true
+  } catch (error) {
+    console.error('Error in bookmarkReferralJob:', error)
+    return false
+  }
+}
+
+export const likeReferralJob = async (jobId: string, userId: string): Promise<boolean> => {
+  try {
+    // This is a placeholder for future implementation
+    // In a real app, you would have a referral_job_likes table
+    console.log(`Liking job ${jobId} for user ${userId}`)
+    return true
+  } catch (error) {
+    console.error('Error in likeReferralJob:', error)
+    return false
+  }
 }

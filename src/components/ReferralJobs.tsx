@@ -951,14 +951,21 @@ const ReferralJobs = () => {
                             <div className="flex items-center space-x-2">
                               {/* Read More button */}
                               <button 
-                                className="bg-blue-500 text-white hover:bg-blue-600 font-medium text-sm px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-1"
+                                className="bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium text-sm px-3 py-1 rounded-lg transition-all duration-200 hover:scale-105"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleViewJob(job)
                                 }}
                               >
-                                <DollarSign className="h-3 w-3" />
-                                <span>Read More</span>
+                                Read More
+                              </button>
+                              
+                              {/* Apply Now button */}
+                              <button 
+                                className="bg-blue-500 text-white hover:bg-blue-600 font-medium text-sm px-3 py-1 rounded-lg transition-all duration-200 hover:scale-105"
+                                onClick={(e) => handleApplyJob(job, e)}
+                              >
+                                {job.cta_text || 'Apply Now'}
                               </button>
                             </div>
                           </div>
