@@ -9,6 +9,7 @@ export interface UserProfile {
   user_type?: 'business-owner' | 'referrer' | 'idea-creator' | 'other'
   avatar_url?: string
   newsletter_opt_in?: boolean
+  credits?: number
   created_at: string
   updated_at: string
 }
@@ -20,6 +21,34 @@ export interface UpdateProfileData {
   user_type?: 'business-owner' | 'referrer' | 'idea-creator' | 'other'
   avatar_url?: string
   newsletter_opt_in?: boolean
+}
+
+// Transaction Types
+export interface Transaction {
+  id: string
+  user_id: string
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund'
+  amount: number
+  credits: number
+  currency: string
+  description: string
+  status: 'pending' | 'completed' | 'failed' | 'cancelled'
+  payment_method?: string
+  payment_id?: string
+  metadata?: any
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateTransactionData {
+  user_id: string
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund'
+  amount: number
+  credits: number
+  description: string
+  payment_method?: string
+  payment_id?: string
+  metadata?: any
 }
 
 // User Profile Functions
@@ -178,6 +207,180 @@ export const uploadFile = async (file: File, bucket: string): Promise<string | n
   } catch (error) {
     console.error('Error in uploadFile:', error)
     throw error
+  }
+}
+
+// Wallet Functions
+export const getUserCredits = async (userId: string): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('credits')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user credits:', error)
+      return 0
+    }
+
+    return data?.credits || 0
+  } catch (error) {
+    console.error('Error in getUserCredits:', error)
+    return 0
+  }
+}
+
+export const getUserTransactions = async (userId: string, limit = 50, offset = 0): Promise<Transaction[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) {
+      console.error('Error fetching transactions:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error in getUserTransactions:', error)
+    return []
+  }
+}
+
+export const createTransaction = async (transactionData: CreateTransactionData): Promise<Transaction | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: transactionData.user_id,
+        type: transactionData.type,
+        amount: transactionData.amount,
+        credits: transactionData.credits,
+        description: transactionData.description,
+        payment_method: transactionData.payment_method,
+        payment_id: transactionData.payment_id,
+        metadata: transactionData.metadata,
+        status: 'completed'
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating transaction:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in createTransaction:', error)
+    throw error
+  }
+}
+
+export const addCreditsToUser = async (
+  userId: string,
+  credits: number,
+  amount: number,
+  description: string,
+  paymentMethod?: string,
+  paymentId?: string
+): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.rpc('add_credits_to_user', {
+      p_user_id: userId,
+      p_credits: credits,
+      p_amount: amount,
+      p_description: description,
+      p_payment_method: paymentMethod,
+      p_payment_id: paymentId
+    })
+
+    if (error) {
+      console.error('Error adding credits:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in addCreditsToUser:', error)
+    throw error
+  }
+}
+
+export const deductCreditsFromUser = async (
+  userId: string,
+  credits: number,
+  description: string
+): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.rpc('deduct_credits_from_user', {
+      p_user_id: userId,
+      p_credits: credits,
+      p_description: description
+    })
+
+    if (error) {
+      console.error('Error deducting credits:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in deductCreditsFromUser:', error)
+    throw error
+  }
+}
+
+export const getWalletStats = async (userId: string) => {
+  try {
+    // Get current credits
+    const profile = await getUserProfile(userId)
+    const currentCredits = profile?.credits || 0
+
+    // Get transaction stats
+    const { data: stats, error } = await supabase
+      .from('transactions')
+      .select('type, amount, credits')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+
+    if (error) {
+      console.error('Error fetching wallet stats:', error)
+      return {
+        currentCredits,
+        totalSpent: 0,
+        totalEarned: 0,
+        pendingEarnings: 0
+      }
+    }
+
+    const totalSpent = stats
+      ?.filter(t => t.type === 'credit_purchase')
+      .reduce((sum, t) => sum + Number(t.amount), 0) || 0
+
+    const totalEarned = stats
+      ?.filter(t => t.type === 'credit_usage' && t.credits < 0)
+      .reduce((sum, t) => sum + Math.abs(Number(t.credits)), 0) || 0
+
+    return {
+      currentCredits,
+      totalSpent,
+      totalEarned,
+      pendingEarnings: 0 // This would be calculated based on pending transactions
+    }
+  } catch (error) {
+    console.error('Error in getWalletStats:', error)
+    return {
+      currentCredits: 0,
+      totalSpent: 0,
+      totalEarned: 0,
+      pendingEarnings: 0
+    }
   }
 }
 
