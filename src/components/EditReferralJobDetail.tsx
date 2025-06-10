@@ -533,7 +533,7 @@ const EditReferralJobDetail = () => {
                   {editingSection === 'description' ? (
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Montserrat' }}>
+                        <h2 className="text-xl font-bold text-gray-900\" style={{ fontFamily: 'Montserrat' }}>
                           Job Description
                         </h2>
                         <div className="flex space-x-2">
@@ -595,7 +595,7 @@ const EditReferralJobDetail = () => {
                   {editingSection === 'requirements' ? (
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Montserrat' }}>
+                        <h2 className="text-xl font-bold text-gray-900\" style={{ fontFamily: 'Montserrat' }}>
                           Requirements
                         </h2>
                         <div className="flex space-x-2">
@@ -661,7 +661,7 @@ const EditReferralJobDetail = () => {
                   {editingSection === 'terms' ? (
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Montserrat' }}>
+                        <h2 className="text-xl font-bold text-gray-900\" style={{ fontFamily: 'Montserrat' }}>
                           Terms & Conditions
                         </h2>
                         <div className="flex space-x-2">
@@ -779,7 +779,7 @@ const EditReferralJobDetail = () => {
                   {editingSection === 'commission' ? (
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Montserrat' }}>
+                        <h3 className="text-lg font-semibold text-gray-900\" style={{ fontFamily: 'Montserrat' }}>
                           Commission
                         </h3>
                         <div className="flex space-x-2">
@@ -869,7 +869,7 @@ const EditReferralJobDetail = () => {
                   {editingSection === 'location' ? (
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Montserrat' }}>
+                        <h3 className="text-lg font-semibold text-gray-900\" style={{ fontFamily: 'Montserrat' }}>
                           Location & Urgency
                         </h3>
                         <div className="flex space-x-2">
@@ -951,7 +951,7 @@ const EditReferralJobDetail = () => {
                   {editingSection === 'details' ? (
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Montserrat' }}>
+                        <h3 className="text-lg font-semibold text-gray-900\" style={{ fontFamily: 'Montserrat' }}>
                           Additional Details
                         </h3>
                         <div className="flex space-x-2">
