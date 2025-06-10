@@ -17,6 +17,7 @@ import IdeaDetail from './components/IdeaDetail';
 import EditIdeaDetail from './components/EditIdeaDetail';
 import ReferralJobs from './components/ReferralJobs';
 import ReferralJobDetail from './components/ReferralJobDetail';
+import EditReferralJobDetail from './components/EditReferralJobDetail';
 import StarterTools from './components/StarterTools';
 import CreatePost from './components/CreatePost';
 import MyPosts from './components/MyPosts';
@@ -133,6 +134,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ReferralJobDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/my-posts/edit/referral/:id" 
+            element={
+              <ProtectedRoute>
+                <EditReferralJobDetail />
               </ProtectedRoute>
             } 
           />

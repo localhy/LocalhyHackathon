@@ -98,9 +98,6 @@ const MyPosts = () => {
       case 'create-new':
         navigate('/dashboard/create-new')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         // Stay on current page
         break
@@ -315,7 +312,7 @@ const MyPosts = () => {
           <div className="max-w-6xl mx-auto">
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
                   onClick={() => {
                     setError('')
@@ -413,7 +410,7 @@ const MyPosts = () => {
                       {/* Commission overlay for referral jobs */}
                       {post.type === 'referral' && (
                         <div className="absolute top-3 right-3 bg-blue-500 text-white px-2 py-1 rounded-full text-sm font-bold">
-                          {(post as ReferralJob).commission}%
+                          {(post as ReferralJob).commission_type === 'percentage' ? `${(post as ReferralJob).commission}%` : `$${(post as ReferralJob).commission}`}
                         </div>
                       )}
                       
