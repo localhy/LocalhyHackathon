@@ -41,14 +41,8 @@ const Dashboard = () => {
       case 'create-new':
         navigate('/dashboard/create-new')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')

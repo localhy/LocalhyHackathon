@@ -21,7 +21,6 @@ import EditReferralJobDetail from './components/EditReferralJobDetail';
 import StarterTools from './components/StarterTools';
 import CreatePost from './components/CreatePost';
 import MyPosts from './components/MyPosts';
-import VaultStats from './components/VaultStats';
 import Wallet from './components/Wallet';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
@@ -174,14 +173,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyPosts />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/vault-stats" 
-            element={
-              <ProtectedRoute>
-                <VaultStats />
               </ProtectedRoute>
             } 
           />
