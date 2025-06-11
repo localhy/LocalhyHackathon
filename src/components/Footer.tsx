@@ -32,7 +32,7 @@ const Footer = () => {
             </h3>
             <ul className="space-y-2 sm:space-y-3 text-gray-400 text-sm sm:text-base" style={{ fontFamily: 'Inter' }}>
               <li>
-                <a href="https://twitter.com/localhy" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 hover:text-green-500 transition-colors">
+                <a href="https://x.com/localhy" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 hover:text-green-500 transition-colors">
                   <span>X (Twitter)</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
