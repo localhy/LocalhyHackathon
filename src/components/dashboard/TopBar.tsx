@@ -4,7 +4,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import NotificationTooltip from './NotificationTooltip'
 import MessageTooltip from './MessageTooltip'
-import { getUserProfile } from '../../lib/database'
+import { 
+  getUserProfile, 
+  getUserNotifications,
+  subscribeToUserNotifications,
+  type Notification 
+} from '../../lib/database'
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -18,6 +23,8 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
   const [notificationTooltipOpen, setNotificationTooltipOpen] = useState(false)
   const [messageTooltipOpen, setMessageTooltipOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
 
   useEffect(() => {
     const loadUserAvatar = async () => {
@@ -41,6 +48,48 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
 
     loadUserAvatar()
   }, [user])
+
+  useEffect(() => {
+    if (user) {
+      loadNotificationCount()
+      
+      // Set up real-time subscription for notifications
+      const subscription = subscribeToUserNotifications(user.id, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          // New notification added
+          if (!payload.new.read) {
+            setUnreadNotificationCount(prev => prev + 1)
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          // Notification updated (likely marked as read)
+          if (payload.old.read === false && payload.new.read === true) {
+            setUnreadNotificationCount(prev => Math.max(0, prev - 1))
+          }
+        } else if (payload.eventType === 'DELETE') {
+          // Notification deleted
+          if (!payload.old.read) {
+            setUnreadNotificationCount(prev => Math.max(0, prev - 1))
+          }
+        }
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [user])
+
+  const loadNotificationCount = async () => {
+    if (!user) return
+
+    try {
+      const notifications = await getUserNotifications(user.id)
+      const unreadCount = notifications.filter(n => !n.read).length
+      setUnreadNotificationCount(unreadCount)
+    } catch (error) {
+      console.error('Error loading notification count:', error)
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -96,7 +145,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
               className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <Bell className="h-5 w-5" />
-              {/* Remove red dot for new users with no notifications */}
+              {unreadNotificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </span>
+              )}
             </button>
             
             <NotificationTooltip
@@ -117,7 +170,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
               className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <MessageCircle className="h-5 w-5" />
-              {/* Remove green dot for new users with no messages */}
+              {unreadMessageCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                </span>
+              )}
             </button>
             
             <MessageTooltip

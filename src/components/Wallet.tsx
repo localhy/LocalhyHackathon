@@ -4,7 +4,15 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserProfile, getUserTransactions, getWalletStats, transferCreditsToFiatBalance, processWithdrawal, type Transaction } from '../lib/database'
+import { 
+  getUserProfile, 
+  getUserTransactions, 
+  getWalletStats, 
+  transferCreditsToFiatBalance, 
+  processWithdrawal, 
+  subscribeToUserProfile,
+  type Transaction 
+} from '../lib/database'
 
 const Wallet = () => {
   const navigate = useNavigate()
@@ -61,6 +69,24 @@ const Wallet = () => {
   useEffect(() => {
     if (user) {
       loadWalletData()
+      
+      // Set up real-time subscription for wallet balance updates
+      const subscription = subscribeToUserProfile(user.id, (payload) => {
+        console.log('Profile update:', payload)
+        
+        if (payload.eventType === 'UPDATE') {
+          // Update wallet data when profile changes (credits/fiat balance)
+          setWalletData(prev => ({
+            ...prev,
+            currentCredits: payload.new.credits || 0,
+            fiatBalance: payload.new.fiat_balance || 0
+          }))
+        }
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
     }
   }, [user])
 

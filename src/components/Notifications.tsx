@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Bell, Check, X, Eye, Trash2, Filter } from 'lucide-react'
+import { Bell, Check, X, Eye, Trash2, Filter, AlertCircle, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-
-interface Notification {
-  id: string
-  title: string
-  message: string
-  type: 'info' | 'success' | 'warning' | 'error'
-  read: boolean
-  createdAt: string
-  actionUrl?: string
-}
+import { 
+  getUserNotifications, 
+  markNotificationAsRead, 
+  markAllNotificationsAsRead, 
+  deleteNotification,
+  subscribeToUserNotifications,
+  type Notification 
+} from '../lib/database'
 
 const Notifications = () => {
   const navigate = useNavigate()
@@ -22,16 +20,55 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    // Simulate loading notifications - start with empty for new users
-    const timer = setTimeout(() => {
-      setNotifications([])
-      setLoading(false)
-    }, 1000)
+    if (user) {
+      loadNotifications()
+      
+      // Set up real-time subscription
+      const subscription = subscribeToUserNotifications(user.id, (payload) => {
+        console.log('Notification update:', payload)
+        
+        if (payload.eventType === 'INSERT') {
+          // Add new notification to the top of the list
+          setNotifications(prev => [payload.new, ...prev])
+        } else if (payload.eventType === 'UPDATE') {
+          // Update existing notification
+          setNotifications(prev => 
+            prev.map(notif => 
+              notif.id === payload.new.id ? payload.new : notif
+            )
+          )
+        } else if (payload.eventType === 'DELETE') {
+          // Remove deleted notification
+          setNotifications(prev => 
+            prev.filter(notif => notif.id !== payload.old.id)
+          )
+        }
+      })
 
-    return () => clearTimeout(timer)
-  }, [])
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [user])
+
+  const loadNotifications = async () => {
+    if (!user) return
+
+    try {
+      setLoading(true)
+      setError('')
+      const userNotifications = await getUserNotifications(user.id)
+      setNotifications(userNotifications)
+    } catch (err) {
+      console.error('Error loading notifications:', err)
+      setError('Failed to load notifications. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleNavigation = (page: string) => {
     setSidebarOpen(false)
@@ -52,14 +89,8 @@ const Notifications = () => {
       case 'create-new':
         navigate('/dashboard/create-new')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')
@@ -75,22 +106,101 @@ const Notifications = () => {
     }
   }
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    )
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      const success = await markNotificationAsRead(notificationId)
+      if (success) {
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif.id === notificationId ? { ...notif, read: true } : notif
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    )
+  const handleMarkAllAsRead = async () => {
+    if (!user) return
+
+    try {
+      const success = await markAllNotificationsAsRead(user.id)
+      if (success) {
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, read: true }))
+        )
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+    }
   }
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id))
+  const handleDeleteNotification = async (notificationId: string) => {
+    try {
+      const success = await deleteNotification(notificationId)
+      if (success) {
+        setNotifications(prev => 
+          prev.filter(notif => notif.id !== notificationId)
+        )
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error)
+    }
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if not already read
+    if (!notification.read) {
+      await handleMarkAsRead(notification.id)
+    }
+
+    // Navigate to action URL if provided
+    if (notification.action_url) {
+      navigate(notification.action_url)
+    }
+  }
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="h-5 w-5 text-green-500" />
+      case 'warning':
+        return <AlertCircle className="h-5 w-5 text-yellow-500" />
+      case 'error':
+        return <X className="h-5 w-5 text-red-500" />
+      default:
+        return <Bell className="h-5 w-5 text-blue-500" />
+    }
+  }
+
+  const getNotificationBgColor = (type: string, read: boolean) => {
+    const baseColor = read ? 'bg-white' : 'bg-blue-50'
+    
+    switch (type) {
+      case 'success':
+        return read ? 'bg-white' : 'bg-green-50'
+      case 'warning':
+        return read ? 'bg-white' : 'bg-yellow-50'
+      case 'error':
+        return read ? 'bg-white' : 'bg-red-50'
+      default:
+        return baseColor
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${diffInHours}h ago`
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `${diffInDays}d ago`
+    
+    return date.toLocaleDateString()
   }
 
   const filteredNotifications = notifications.filter(notif => {
@@ -173,7 +283,7 @@ const Notifications = () => {
             
             {unreadCount > 0 && (
               <button
-                onClick={markAllAsRead}
+                onClick={handleMarkAllAsRead}
                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
                 style={{ fontFamily: 'Inter' }}
               >
@@ -214,39 +324,122 @@ const Notifications = () => {
         {/* Content */}
         <div className="flex-1 p-4 lg:p-6">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Bell className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 
-                className="text-xl font-semibold text-gray-900 mb-2"
-                style={{ fontFamily: 'Montserrat' }}
-              >
-                No notifications yet
-              </h3>
-              <p 
-                className="text-gray-600 mb-4"
-                style={{ fontFamily: 'Inter' }}
-              >
-                Start engaging with the community to receive notifications about your activities.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
-                  onClick={() => navigate('/dashboard/create-new')}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium"
-                  style={{ fontFamily: 'Inter' }}
+                  onClick={loadNotifications}
+                  className="ml-auto text-red-600 hover:text-red-700 font-medium text-sm"
                 >
-                  Create Your First Post
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard/ideas-vault')}
-                  className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50"
-                  style={{ fontFamily: 'Inter' }}
-                >
-                  Explore Ideas
+                  Try again
                 </button>
               </div>
-            </div>
+            )}
+
+            {filteredNotifications.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Bell className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 
+                  className="text-xl font-semibold text-gray-900 mb-2"
+                  style={{ fontFamily: 'Montserrat' }}
+                >
+                  {filter === 'all' ? 'No notifications yet' : `No ${filter} notifications`}
+                </h3>
+                <p 
+                  className="text-gray-600 mb-4"
+                  style={{ fontFamily: 'Inter' }}
+                >
+                  {filter === 'all' 
+                    ? 'Start engaging with the community to receive notifications about your activities.'
+                    : `You don't have any ${filter} notifications at the moment.`
+                  }
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => navigate('/dashboard/create-new')}
+                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    Create Your First Post
+                  </button>
+                  <button
+                    onClick={() => navigate('/dashboard/ideas-vault')}
+                    className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    Explore Ideas
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`${getNotificationBgColor(notification.type, notification.read)} border border-gray-200 rounded-lg p-4 transition-all duration-200 hover:shadow-md ${
+                      notification.action_url ? 'cursor-pointer' : ''
+                    } ${!notification.read ? 'border-l-4 border-l-blue-500' : ''}`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3 flex-1">
+                        {getNotificationIcon(notification.type)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 
+                              className={`font-medium ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}
+                              style={{ fontFamily: 'Inter' }}
+                            >
+                              {notification.title}
+                            </h4>
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            )}
+                          </div>
+                          <p 
+                            className={`text-sm ${!notification.read ? 'text-gray-700' : 'text-gray-600'}`}
+                            style={{ fontFamily: 'Inter' }}
+                          >
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {formatDate(notification.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 ml-4">
+                        {!notification.read && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleMarkAsRead(notification.id)
+                            }}
+                            className="text-blue-600 hover:text-blue-700 p-1 rounded"
+                            title="Mark as read"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteNotification(notification.id)
+                          }}
+                          className="text-red-600 hover:text-red-700 p-1 rounded"
+                          title="Delete notification"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
