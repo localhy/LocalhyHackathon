@@ -624,6 +624,144 @@ export const getPromotionPricing = (promotionType: string, durationDays: number)
   return basePrice * durationDays
 }
 
+export const getActivePromotions = async (): Promise<Promotion[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('status', 'active')
+      .lte('start_date', new Date().toISOString())
+      .gte('end_date', new Date().toISOString())
+
+    if (error) {
+      console.error('Error fetching active promotions:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error in getActivePromotions:', error)
+    return []
+  }
+}
+
+export const getActivePromotionForContent = async (contentId: string, contentType: string): Promise<Promotion | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('content_id', contentId)
+      .eq('content_type', contentType)
+      .eq('status', 'active')
+      .lte('start_date', new Date().toISOString())
+      .gte('end_date', new Date().toISOString())
+      .maybeSingle()
+
+    if (error) {
+      console.error('Error fetching active promotion for content:', error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in getActivePromotionForContent:', error)
+    return null
+  }
+}
+
+export const incrementPromotionViews = async (promotionId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('promotions')
+      .update({ views_gained: supabase.sql`views_gained + 1` })
+      .eq('id', promotionId)
+
+    if (error) {
+      console.error('Error incrementing promotion views:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in incrementPromotionViews:', error)
+    return false
+  }
+}
+
+export const incrementPromotionClicks = async (promotionId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('promotions')
+      .update({ clicks_gained: supabase.sql`clicks_gained + 1` })
+      .eq('id', promotionId)
+
+    if (error) {
+      console.error('Error incrementing promotion clicks:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in incrementPromotionClicks:', error)
+    return false
+  }
+}
+
+export const renewPromotion = async (promotionId: string, durationDays: number): Promise<boolean> => {
+  try {
+    // Get the promotion details
+    const { data: promotion, error: fetchError } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('id', promotionId)
+      .single()
+
+    if (fetchError || !promotion) {
+      console.error('Error fetching promotion for renewal:', fetchError)
+      return false
+    }
+
+    // Calculate cost for renewal
+    const cost = getPromotionPricing(promotion.promotion_type, durationDays)
+
+    // Check if user has enough credits
+    const userCredits = await getUserCredits(promotion.user_id)
+    if (userCredits < cost) {
+      throw new Error(`Insufficient credits. Required: ${cost}, Available: ${userCredits}`)
+    }
+
+    // Deduct credits
+    await deductCreditsFromUser(
+      promotion.user_id,
+      cost,
+      `Promotion renewal: ${promotion.promotion_type} for ${durationDays} days`
+    )
+
+    // Update promotion end date and status
+    const newEndDate = new Date()
+    newEndDate.setDate(newEndDate.getDate() + durationDays)
+
+    const { error: updateError } = await supabase
+      .from('promotions')
+      .update({
+        end_date: newEndDate.toISOString(),
+        status: 'active',
+        cost_credits: promotion.cost_credits + cost
+      })
+      .eq('id', promotionId)
+
+    if (updateError) {
+      console.error('Error updating promotion:', updateError)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in renewPromotion:', error)
+    throw error
+  }
+}
+
 // Referral Job Posting Cost
 export const REFERRAL_JOB_POSTING_COST = 5 // 5 credits to post a referral job
 
@@ -707,6 +845,8 @@ export interface Idea {
   user_profiles?: UserProfile
   bookmarked_by_user?: boolean
   liked_by_user?: boolean
+  is_promoted?: boolean
+  promotion_type?: string
 }
 
 export interface CreateIdeaData {
@@ -831,7 +971,15 @@ export const getIdeas = async (limit = 10, offset = 0, currentUserId?: string): 
       return []
     }
 
-    // Add bookmark and like status for current user
+    // Get active promotions
+    const activePromotions = await getActivePromotions()
+    const promotionMap = new Map(
+      activePromotions
+        .filter(p => p.content_type === 'idea')
+        .map(p => [p.content_id, p])
+    )
+
+    // Add bookmark, like status, and promotion info for current user
     if (currentUserId && data) {
       const ideasWithUserData = await Promise.all(
         data.map(async (idea) => {
@@ -851,17 +999,43 @@ export const getIdeas = async (limit = 10, offset = 0, currentUserId?: string): 
             .eq('user_id', currentUserId)
             .maybeSingle()
 
+          // Check if this idea is promoted
+          const promotion = promotionMap.get(idea.id)
+
           return {
             ...idea,
             bookmarked_by_user: !!bookmark,
-            liked_by_user: !!like
+            liked_by_user: !!like,
+            is_promoted: !!promotion,
+            promotion_type: promotion?.promotion_type
           }
         })
       )
-      return ideasWithUserData
+      
+      // Sort promoted content to the top
+      return ideasWithUserData.sort((a, b) => {
+        if (a.is_promoted && !b.is_promoted) return -1
+        if (!a.is_promoted && b.is_promoted) return 1
+        return 0
+      })
     }
 
-    return data || []
+    // Add promotion info for non-authenticated users
+    const ideasWithPromotions = data.map(idea => {
+      const promotion = promotionMap.get(idea.id)
+      return {
+        ...idea,
+        is_promoted: !!promotion,
+        promotion_type: promotion?.promotion_type
+      }
+    })
+
+    // Sort promoted content to the top
+    return ideasWithPromotions.sort((a, b) => {
+      if (a.is_promoted && !b.is_promoted) return -1
+      if (!a.is_promoted && b.is_promoted) return 1
+      return 0
+    })
   } catch (error) {
     console.error('Error in getIdeas:', error)
     return []
@@ -896,6 +1070,12 @@ export const getIdeaById = async (ideaId: string): Promise<Idea | null> => {
       .from('ideas')
       .update({ views: (data.views || 0) + 1 })
       .eq('id', ideaId)
+
+    // Check for active promotion and increment views
+    const promotion = await getActivePromotionForContent(ideaId, 'idea')
+    if (promotion) {
+      await incrementPromotionViews(promotion.id)
+    }
 
     return data
   } catch (error) {
@@ -1350,6 +1530,8 @@ export interface ReferralJob {
   bookmarked_by_user?: boolean
   liked_by_user?: boolean
   likes?: number
+  is_promoted?: boolean
+  promotion_type?: string
 }
 
 export interface CreateReferralJobData {
@@ -1485,19 +1667,54 @@ export const getReferralJobs = async (limit = 10, offset = 0, currentUserId?: st
       return []
     }
 
-    // Add bookmark and like status for current user if provided
+    // Get active promotions
+    const activePromotions = await getActivePromotions()
+    const promotionMap = new Map(
+      activePromotions
+        .filter(p => p.content_type === 'referral_job')
+        .map(p => [p.content_id, p])
+    )
+
+    // Add bookmark, like status, and promotion info
     if (currentUserId && data) {
       // In a real implementation, you would have referral_job_bookmarks and referral_job_likes tables
-      // For now, we'll just return the data without user-specific flags
-      return data.map(job => ({
-        ...job,
-        bookmarked_by_user: false,
-        liked_by_user: false,
-        likes: 0 // Default value
-      }))
+      // For now, we'll just return the data with promotion info
+      const jobsWithPromotions = data.map(job => {
+        const promotion = promotionMap.get(job.id)
+        return {
+          ...job,
+          bookmarked_by_user: false,
+          liked_by_user: false,
+          likes: 0, // Default value
+          is_promoted: !!promotion,
+          promotion_type: promotion?.promotion_type
+        }
+      })
+
+      // Sort promoted content to the top
+      return jobsWithPromotions.sort((a, b) => {
+        if (a.is_promoted && !b.is_promoted) return -1
+        if (!a.is_promoted && b.is_promoted) return 1
+        return 0
+      })
     }
 
-    return data || []
+    // Add promotion info for non-authenticated users
+    const jobsWithPromotions = data.map(job => {
+      const promotion = promotionMap.get(job.id)
+      return {
+        ...job,
+        is_promoted: !!promotion,
+        promotion_type: promotion?.promotion_type
+      }
+    })
+
+    // Sort promoted content to the top
+    return jobsWithPromotions.sort((a, b) => {
+      if (a.is_promoted && !b.is_promoted) return -1
+      if (!a.is_promoted && b.is_promoted) return 1
+      return 0
+    })
   } catch (error) {
     console.error('Error in getReferralJobs:', error)
     return []
@@ -1525,6 +1742,12 @@ export const getReferralJobById = async (jobId: string): Promise<ReferralJob | n
     if (error) {
       console.error('Error fetching referral job:', error)
       return null
+    }
+
+    // Check for active promotion and increment views
+    const promotion = await getActivePromotionForContent(jobId, 'referral_job')
+    if (promotion) {
+      await incrementPromotionViews(promotion.id)
     }
 
     return data
@@ -1574,6 +1797,8 @@ export interface Tool {
   updated_at: string
   location?: string
   user_profiles?: UserProfile
+  is_promoted?: boolean
+  promotion_type?: string
 }
 
 export interface CreateToolData {
@@ -1689,7 +1914,32 @@ export const getTools = async (limit = 10, offset = 0): Promise<Tool[]> => {
       return []
     }
 
-    return data || []
+    // Get active promotions
+    const activePromotions = await getActivePromotions()
+    const promotionMap = new Map(
+      activePromotions
+        .filter(p => p.content_type === 'tool')
+        .map(p => [p.content_id, p])
+    )
+
+    // Add promotion info
+    const toolsWithPromotions = data.map(tool => {
+      const promotion = promotionMap.get(tool.id)
+      return {
+        ...tool,
+        is_promoted: !!promotion,
+        promotion_type: promotion?.promotion_type
+      }
+    })
+
+    // Sort promoted content to the top
+    return toolsWithPromotions.sort((a, b) => {
+      if (a.is_promoted && !b.is_promoted) return -1
+      if (!a.is_promoted && b.is_promoted) return 1
+      if (a.featured && !b.featured) return -1
+      if (!a.featured && b.featured) return 1
+      return 0
+    })
   } catch (error) {
     console.error('Error in getTools:', error)
     return []
@@ -1724,6 +1974,12 @@ export const getToolById = async (toolId: string): Promise<Tool | null> => {
       .from('tools')
       .update({ downloads_count: (data.downloads_count || 0) + 1 })
       .eq('id', toolId)
+
+    // Check for active promotion and increment views
+    const promotion = await getActivePromotionForContent(toolId, 'tool')
+    if (promotion) {
+      await incrementPromotionViews(promotion.id)
+    }
 
     return data
   } catch (error) {

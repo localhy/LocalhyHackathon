@@ -317,7 +317,7 @@ const ReferralJobs = () => {
       const offset = currentPage * limit
       
       // Fetch jobs from database
-      let fetchedJobs = await getReferralJobs(limit + 1, offset)
+      let fetchedJobs = await getReferralJobs(limit + 1, offset, user?.id)
       
       // Client-side filtering (in a real app, this would be done server-side)
       if (searchQuery) {
@@ -348,6 +348,11 @@ const ReferralJobs = () => {
       
       // Sort jobs
       fetchedJobs.sort((a, b) => {
+        // First sort by promotion status
+        if (a.is_promoted && !b.is_promoted) return -1
+        if (!a.is_promoted && b.is_promoted) return 1
+        
+        // Then sort by the selected criteria
         switch (sortBy) {
           case 'commission':
             return b.commission - a.commission
@@ -800,12 +805,13 @@ const ReferralJobs = () => {
                     const isLastItem = index === jobs.length - 1
                     const isBookmarked = job.bookmarked_by_user || false
                     const isLiked = job.liked_by_user || false
+                    const isPromoted = job.is_promoted
                     
                     return (
                       <div
                         key={job.id}
                         ref={isLastItem ? lastJobElementRef : null}
-                        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group"
+                        className={`bg-white rounded-xl shadow-sm border ${isPromoted ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group`}
                         onClick={() => handleViewJob(job)}
                       >
                         {/* Thumbnail Image - 16:9 ratio */}
@@ -856,6 +862,13 @@ const ReferralJobs = () => {
                               </>
                             )}
                           </div>
+                          
+                          {/* Featured badge - if promoted */}
+                          {isPromoted && (
+                            <div className="absolute top-3 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                              Featured
+                            </div>
+                          )}
                           
                           {/* Category badge - bottom left */}
                           <div className="absolute bottom-3 left-3 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">

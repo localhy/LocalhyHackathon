@@ -286,6 +286,11 @@ const IdeasVault = () => {
       
       // Sort ideas
       fetchedIdeas.sort((a, b) => {
+        // First sort by promotion status
+        if (a.is_promoted && !b.is_promoted) return -1
+        if (!a.is_promoted && b.is_promoted) return 1
+        
+        // Then sort by the selected criteria
         switch (sortBy) {
           case 'popular':
             return (b.likes + b.views) - (a.likes + a.views)
@@ -745,12 +750,13 @@ const IdeasVault = () => {
                     const isLiked = idea.liked_by_user
                     const isLastItem = index === ideas.length - 1
                     const isPaid = idea.price > 0
+                    const isPromoted = idea.is_promoted
                     
                     return (
                       <div
                         key={idea.id}
                         ref={isLastItem ? lastIdeaElementRef : null}
-                        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group"
+                        className={`bg-white rounded-xl shadow-sm border ${isPromoted ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group`}
                         onClick={() => handleViewIdea(idea)}
                         onTouchStart={() => handleTouchStart(idea)}
                         onTouchEnd={handleTouchEnd}
@@ -798,6 +804,13 @@ const IdeasVault = () => {
                             <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
                               <Lock className="h-3 w-3" />
                               <span>${idea.price}</span>
+                            </div>
+                          )}
+                          
+                          {/* Featured badge - if promoted */}
+                          {isPromoted && (
+                            <div className="absolute top-3 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                              Featured
                             </div>
                           )}
                           
