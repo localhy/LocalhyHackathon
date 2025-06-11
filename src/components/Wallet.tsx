@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Wallet as WalletIcon, DollarSign, TrendingUp, Download, Plus, CreditCard, ExternalLink, Clock, CheckCircle, XCircle, AlertCircle, Copy, Eye, EyeOff, ArrowUpRight, Banknote } from 'lucide-react'
+import { Wallet as WalletIcon, DollarSign, TrendingUp, Download, Plus, CreditCard, ExternalLink, Clock, CheckCircle, XCircle, AlertCircle, Copy, Eye, EyeOff, ArrowUpRight, Banknote, Megaphone, Calendar, BarChart3, Target, Zap, Star, Loader } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
@@ -11,7 +11,18 @@ import {
   transferCreditsToFiatBalance, 
   processWithdrawal, 
   subscribeToUserProfile,
-  type Transaction 
+  getUserPromotions,
+  createPromotionAd,
+  getPromotionPricing,
+  getUserIdeas,
+  getUserReferralJobs,
+  getUserTools,
+  type Transaction,
+  type Promotion,
+  type CreatePromotionData,
+  type Idea,
+  type ReferralJob,
+  type Tool
 } from '../lib/database'
 
 const Wallet = () => {
@@ -28,7 +39,7 @@ const Wallet = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [showBalance, setShowBalance] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'purchase' | 'withdrawals'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'purchase' | 'withdrawals' | 'promotions'>('overview')
   
   // Withdrawal states
   const [creditsToConvert, setCreditsToConvert] = useState(0)
@@ -37,6 +48,27 @@ const Wallet = () => {
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawalError, setWithdrawalError] = useState('')
   const [withdrawalSuccess, setWithdrawalSuccess] = useState('')
+
+  // Promotion states
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [userContent, setUserContent] = useState<{
+    ideas: Idea[]
+    referralJobs: ReferralJob[]
+    tools: Tool[]
+  }>({
+    ideas: [],
+    referralJobs: [],
+    tools: []
+  })
+  const [promotionForm, setPromotionForm] = useState({
+    contentType: 'idea' as 'idea' | 'referral_job' | 'tool',
+    contentId: '',
+    promotionType: 'featured_homepage' as 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement',
+    durationDays: 7
+  })
+  const [creatingPromotion, setCreatingPromotion] = useState(false)
+  const [promotionError, setPromotionError] = useState('')
+  const [promotionSuccess, setPromotionSuccess] = useState('')
 
   // Payment links - these would be configured from your PayPal/Creem.io accounts
   const paymentOptions = [
@@ -90,6 +122,12 @@ const Wallet = () => {
     }
   }, [user])
 
+  useEffect(() => {
+    if (user && activeTab === 'promotions') {
+      loadPromotionData()
+    }
+  }, [user, activeTab])
+
   const loadWalletData = async () => {
     if (!user) return
 
@@ -108,6 +146,29 @@ const Wallet = () => {
       console.error('Error loading wallet data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPromotionData = async () => {
+    if (!user) return
+
+    try {
+      // Load promotions and user content in parallel
+      const [userPromotions, ideas, referralJobs, tools] = await Promise.all([
+        getUserPromotions(user.id),
+        getUserIdeas(user.id),
+        getUserReferralJobs(user.id),
+        getUserTools(user.id)
+      ])
+
+      setPromotions(userPromotions)
+      setUserContent({
+        ideas,
+        referralJobs,
+        tools
+      })
+    } catch (error) {
+      console.error('Error loading promotion data:', error)
     }
   }
 
@@ -193,6 +254,55 @@ const Wallet = () => {
     }
   }
 
+  const handleCreatePromotion = async () => {
+    if (!user || !promotionForm.contentId) return
+
+    setCreatingPromotion(true)
+    setPromotionError('')
+    setPromotionSuccess('')
+
+    try {
+      // Calculate cost based on promotion type and duration
+      const costCredits = getPromotionPricing(promotionForm.promotionType, promotionForm.durationDays)
+
+      // Check if user has enough credits
+      if (walletData.currentCredits < costCredits) {
+        throw new Error(`Insufficient credits. You need ${costCredits} credits for this promotion.`)
+      }
+
+      const promotionData: CreatePromotionData = {
+        user_id: user.id,
+        content_id: promotionForm.contentId,
+        content_type: promotionForm.contentType,
+        promotion_type: promotionForm.promotionType,
+        duration_days: promotionForm.durationDays,
+        cost_credits: costCredits
+      }
+
+      await createPromotionAd(promotionData)
+      
+      setPromotionSuccess(`Promotion created successfully! Your content will be promoted for ${promotionForm.durationDays} days.`)
+      
+      // Reset form
+      setPromotionForm({
+        contentType: 'idea',
+        contentId: '',
+        promotionType: 'featured_homepage',
+        durationDays: 7
+      })
+      
+      // Refresh data
+      await Promise.all([
+        loadWalletData(),
+        loadPromotionData()
+      ])
+    } catch (error: any) {
+      setPromotionError(error.message || 'Failed to create promotion. Please try again.')
+    } finally {
+      setCreatingPromotion(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -240,6 +350,65 @@ const Wallet = () => {
     }
   }
 
+  const getPromotionTypeIcon = (type: string) => {
+    switch (type) {
+      case 'featured_homepage':
+        return <Star className="h-4 w-4 text-yellow-500" />
+      case 'boosted_search':
+        return <Zap className="h-4 w-4 text-blue-500" />
+      case 'category_spotlight':
+        return <Target className="h-4 w-4 text-green-500" />
+      case 'premium_placement':
+        return <BarChart3 className="h-4 w-4 text-purple-500" />
+      default:
+        return <Megaphone className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  const getPromotionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'featured_homepage':
+        return 'Featured on Homepage'
+      case 'boosted_search':
+        return 'Boosted in Search Results'
+      case 'category_spotlight':
+        return 'Category Spotlight'
+      case 'premium_placement':
+        return 'Premium Placement'
+      default:
+        return type
+    }
+  }
+
+  const getPromotionStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800'
+      case 'expired':
+        return 'bg-gray-100 text-gray-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getContentTitle = (contentId: string, contentType: string) => {
+    if (contentType === 'idea') {
+      const idea = userContent.ideas.find(i => i.id === contentId)
+      return idea ? idea.title : 'Unknown Idea'
+    } else if (contentType === 'referral_job') {
+      const job = userContent.referralJobs.find(j => j.id === contentId)
+      return job ? job.title : 'Unknown Referral Job'
+    } else if (contentType === 'tool') {
+      const tool = userContent.tools.find(t => t.id === contentId)
+      return tool ? tool.title : 'Unknown Tool'
+    }
+    return 'Unknown Content'
+  }
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -255,6 +424,10 @@ const Wallet = () => {
 
   const calculateNetWithdrawal = (amount: number) => {
     return amount - calculateWithdrawalFee(amount)
+  }
+
+  const calculatePromotionCost = () => {
+    return getPromotionPricing(promotionForm.promotionType, promotionForm.durationDays)
   }
 
   if (loading) {
@@ -315,17 +488,18 @@ const Wallet = () => {
         {/* Tabs */}
         <div className="bg-white border-b border-gray-200 px-4 lg:px-6">
           <div className="max-w-6xl mx-auto">
-            <nav className="flex space-x-8">
+            <nav className="flex space-x-8 overflow-x-auto">
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'transactions', label: 'Transactions' },
                 { id: 'purchase', label: 'Buy Credits' },
-                { id: 'withdrawals', label: 'Withdrawals' }
+                { id: 'withdrawals', label: 'Withdrawals' },
+                { id: 'promotions', label: 'Promotions' }
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-green-500 text-green-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -811,6 +985,7 @@ const Wallet = () => {
                       onClick={handleConvertCredits}
                       disabled={converting || creditsToConvert <= 0 || creditsToConvert > walletData.currentCredits}
                       className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+                      style={{ fontFamily: 'Inter' }}
                     >
                       {converting ? (
                         <>
@@ -871,6 +1046,7 @@ const Wallet = () => {
                       onClick={handleWithdraw}
                       disabled={withdrawing || withdrawAmount <= 0 || withdrawAmount > walletData.fiatBalance}
                       className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+                      style={{ fontFamily: 'Inter' }}
                     >
                       {withdrawing ? (
                         <>
@@ -987,6 +1163,335 @@ const Wallet = () => {
                         <li>• A 15% platform fee is deducted from all withdrawals</li>
                         <li>• Minimum withdrawal amount is $10.00</li>
                         <li>• You must add a valid payment method before requesting withdrawals</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'promotions' && (
+              <div className="space-y-6">
+                {/* Success/Error Messages */}
+                {(promotionError || promotionSuccess) && (
+                  <div className="space-y-4">
+                    {promotionError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                        <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{promotionError}</p>
+                      </div>
+                    )}
+                    {promotionSuccess && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <p className="text-green-700" style={{ fontFamily: 'Inter' }}>{promotionSuccess}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Create New Promotion */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 mb-6"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Create New Promotion
+                  </h3>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Content Type
+                      </label>
+                      <select
+                        value={promotionForm.contentType}
+                        onChange={(e) => setPromotionForm({
+                          ...promotionForm,
+                          contentType: e.target.value as any,
+                          contentId: '' // Reset content ID when type changes
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="idea">Idea</option>
+                        <option value="referral_job">Referral Job</option>
+                        <option value="tool">Tool</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Content
+                      </label>
+                      <select
+                        value={promotionForm.contentId}
+                        onChange={(e) => setPromotionForm({
+                          ...promotionForm,
+                          contentId: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="">Select content to promote</option>
+                        {promotionForm.contentType === 'idea' && userContent.ideas.map(idea => (
+                          <option key={idea.id} value={idea.id}>{idea.title}</option>
+                        ))}
+                        {promotionForm.contentType === 'referral_job' && userContent.referralJobs.map(job => (
+                          <option key={job.id} value={job.id}>{job.title}</option>
+                        ))}
+                        {promotionForm.contentType === 'tool' && userContent.tools.map(tool => (
+                          <option key={tool.id} value={tool.id}>{tool.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Promotion Type
+                      </label>
+                      <select
+                        value={promotionForm.promotionType}
+                        onChange={(e) => setPromotionForm({
+                          ...promotionForm,
+                          promotionType: e.target.value as any
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="featured_homepage">Featured on Homepage</option>
+                        <option value="boosted_search">Boosted in Search Results</option>
+                        <option value="category_spotlight">Category Spotlight</option>
+                        <option value="premium_placement">Premium Placement</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Duration (Days)
+                      </label>
+                      <select
+                        value={promotionForm.durationDays}
+                        onChange={(e) => setPromotionForm({
+                          ...promotionForm,
+                          durationDays: parseInt(e.target.value)
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="3">3 days</option>
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30">30 days</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-gray-900">Promotion Cost</p>
+                        <p className="text-sm text-gray-600">
+                          {getPromotionTypeLabel(promotionForm.promotionType)} for {promotionForm.durationDays} days
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-600">{calculatePromotionCost()} credits</p>
+                        <p className="text-sm text-gray-500">Your balance: {walletData.currentCredits} credits</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={handleCreatePromotion}
+                      disabled={creatingPromotion || !promotionForm.contentId || calculatePromotionCost() > walletData.currentCredits}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
+                      style={{ fontFamily: 'Inter' }}
+                    >
+                      {creatingPromotion ? (
+                        <>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          <span>Creating Promotion...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Megaphone className="h-4 w-4" />
+                          <span>Create Promotion</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Promotions */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 mb-4"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Your Promotions
+                  </h3>
+
+                  {promotions.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Megaphone className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <p 
+                        className="text-gray-500 mb-2"
+                        style={{ fontFamily: 'Inter' }}
+                      >
+                        No promotions yet
+                      </p>
+                      <p 
+                        className="text-gray-400 text-sm mb-4"
+                        style={{ fontFamily: 'Inter' }}
+                      >
+                        Promote your content to increase visibility and engagement
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {promotions.map((promotion) => (
+                        <div key={promotion.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3">
+                              {getPromotionTypeIcon(promotion.promotion_type)}
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
+                                    {getContentTitle(promotion.content_id, promotion.content_type)}
+                                  </h4>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPromotionStatusColor(promotion.status)}`}>
+                                    {promotion.status}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {getPromotionTypeLabel(promotion.promotion_type)}
+                                </p>
+                                <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>
+                                      {new Date(promotion.start_date).toLocaleDateString()} - {new Date(promotion.end_date).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Eye className="h-3 w-3" />
+                                    <span>{promotion.views_gained} views</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Target className="h-3 w-3" />
+                                    <span>{promotion.clicks_gained} clicks</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-green-600">{promotion.cost_credits} credits</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {promotion.status === 'active' ? 
+                                  `Expires ${new Date(promotion.end_date).toLocaleDateString()}` : 
+                                  `Ended ${new Date(promotion.end_date).toLocaleDateString()}`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Promotion Types */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 mb-4"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Promotion Types
+                  </h3>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <Star className="h-4 w-4 text-yellow-600" />
+                        </div>
+                        <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
+                          Featured on Homepage
+                        </h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Your content appears in the featured section on the homepage, gaining maximum visibility.
+                      </p>
+                      <p className="text-sm font-medium text-green-600">
+                        10 credits per day
+                      </p>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Zap className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
+                          Boosted in Search Results
+                        </h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Your content appears higher in search results and category listings.
+                      </p>
+                      <p className="text-sm font-medium text-green-600">
+                        5 credits per day
+                      </p>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <Target className="h-4 w-4 text-green-600" />
+                        </div>
+                        <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
+                          Category Spotlight
+                        </h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Your content is featured at the top of its category page.
+                      </p>
+                      <p className="text-sm font-medium text-green-600">
+                        7 credits per day
+                      </p>
+                    </div>
+
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                          <BarChart3 className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
+                          Premium Placement
+                        </h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Your content appears in premium positions across the platform, including sidebar features.
+                      </p>
+                      <p className="text-sm font-medium text-green-600">
+                        15 credits per day
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Promotion Tips */}
+                <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-900 mb-2" style={{ fontFamily: 'Inter' }}>
+                        Promotion Tips
+                      </h4>
+                      <ul className="text-blue-800 text-sm space-y-1" style={{ fontFamily: 'Inter' }}>
+                        <li>• Choose the right promotion type based on your goals</li>
+                        <li>• Longer durations often provide better results</li>
+                        <li>• Make sure your content is high-quality before promoting</li>
+                        <li>• Track performance metrics to optimize future promotions</li>
+                        <li>• Combine different promotion types for maximum impact</li>
                       </ul>
                     </div>
                   </div>

@@ -52,6 +52,33 @@ export interface CreateTransactionData {
   metadata?: any
 }
 
+// Promotion Types
+export interface Promotion {
+  id: string
+  user_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
+  promotion_type: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
+  cost_credits: number
+  start_date: string
+  end_date: string
+  status: 'active' | 'expired' | 'pending' | 'cancelled'
+  views_gained: number
+  clicks_gained: number
+  metadata?: any
+  created_at: string
+  updated_at: string
+}
+
+export interface CreatePromotionData {
+  user_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
+  promotion_type: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
+  duration_days: number
+  cost_credits: number
+}
+
 // Purchased Content Types
 export interface PurchasedContent {
   id: string
@@ -538,6 +565,63 @@ export const getWalletStats = async (userId: string) => {
       pendingEarnings: 0
     }
   }
+}
+
+// Promotion Functions
+export const getUserPromotions = async (userId: string): Promise<Promotion[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching user promotions:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error in getUserPromotions:', error)
+    return []
+  }
+}
+
+export const createPromotionAd = async (promotionData: CreatePromotionData): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.rpc('create_promotion', {
+      p_user_id: promotionData.user_id,
+      p_content_id: promotionData.content_id,
+      p_content_type: promotionData.content_type,
+      p_promotion_type: promotionData.promotion_type,
+      p_duration_days: promotionData.duration_days,
+      p_cost_credits: promotionData.cost_credits
+    })
+
+    if (error) {
+      console.error('Error creating promotion:', error)
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in createPromotionAd:', error)
+    throw error
+  }
+}
+
+export const getPromotionPricing = (promotionType: string, durationDays: number): number => {
+  // Define pricing structure for different promotion types
+  const basePrices = {
+    'featured_homepage': 10, // 10 credits per day
+    'boosted_search': 5,     // 5 credits per day
+    'category_spotlight': 7, // 7 credits per day
+    'premium_placement': 15  // 15 credits per day
+  }
+
+  const basePrice = basePrices[promotionType as keyof typeof basePrices] || 5
+  return basePrice * durationDays
 }
 
 // Ideas Functions
