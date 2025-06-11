@@ -82,7 +82,10 @@ const ActivityFeed: React.FC = () => {
           location: idea.location || undefined,
           price: idea.price,
           created_at: idea.created_at,
-          user_profiles: idea.user_profiles ?? { name: 'Anonymous' }
+          user_profiles: {
+            name: idea.user_profiles?.name || 'Anonymous',
+            avatar_url: idea.user_profiles?.avatar_url || undefined
+          }
         })),
         ...referralJobs.map(job => ({
           id: job.id,
@@ -95,7 +98,10 @@ const ActivityFeed: React.FC = () => {
           commission: job.commission,
           commission_type: job.commission_type,
           created_at: job.created_at,
-          user_profiles: job.user_profiles ?? { name: 'Business Owner' }
+          user_profiles: {
+            name: job.user_profiles?.name || 'Business Owner',
+            avatar_url: job.user_profiles?.avatar_url || undefined
+          }
         })),
         ...tools.map(tool => ({
           id: tool.id,
@@ -106,7 +112,10 @@ const ActivityFeed: React.FC = () => {
           price: tool.price,
           views: tool.downloads_count,
           created_at: tool.created_at,
-          user_profiles: tool.user_profiles ?? { name: 'Creator' }
+          user_profiles: {
+            name: tool.user_profiles?.name || 'Creator',
+            avatar_url: tool.user_profiles?.avatar_url || undefined
+          }
         }))
       ]
 
