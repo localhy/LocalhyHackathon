@@ -19,8 +19,6 @@ import ReferralJobs from './components/ReferralJobs';
 import ReferralJobDetail from './components/ReferralJobDetail';
 import EditReferralJobDetail from './components/EditReferralJobDetail';
 import StarterTools from './components/StarterTools';
-import ToolDetail from './components/ToolDetail';
-import EditToolDetail from './components/EditToolDetail';
 import CreatePost from './components/CreatePost';
 import MyPosts from './components/MyPosts';
 import Wallet from './components/Wallet';
@@ -151,22 +149,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <StarterTools />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/tools/:id" 
-            element={
-              <ProtectedRoute>
-                <ToolDetail />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/my-posts/edit/tool/:id" 
-            element={
-              <ProtectedRoute>
-                <EditToolDetail />
               </ProtectedRoute>
             } 
           />
