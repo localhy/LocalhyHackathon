@@ -58,34 +58,34 @@ const MainActions: React.FC<MainActionsProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <h2 
-        className="text-xl font-bold text-gray-900"
+        className="text-lg sm:text-xl font-bold text-gray-900"
         style={{ fontFamily: 'Montserrat' }}
       >
         Get Started or Keep Earning
       </h2>
 
-      <div className="grid lg:grid-cols-3 gap-6 overflow-x-auto lg:overflow-visible">
-        <div className="flex lg:contents space-x-6 lg:space-x-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 overflow-x-auto lg:overflow-visible">
+        <div className="flex lg:contents space-x-4 sm:space-x-6 lg:space-x-0">
           {actions.map((action) => (
             <div
               key={action.id}
-              className={`${action.bgColor} rounded-xl p-6 min-w-[280px] lg:min-w-0 flex-shrink-0 border border-gray-200 hover:shadow-lg transition-all duration-200`}
+              className={`${action.bgColor} rounded-xl p-4 sm:p-6 min-w-[280px] lg:min-w-0 flex-shrink-0 border border-gray-200 hover:shadow-lg transition-all duration-200`}
             >
-              <div className={`w-12 h-12 ${action.bgColor} rounded-lg flex items-center justify-center mb-4`}>
-                <action.icon className={`h-6 w-6 ${action.iconColor}`} />
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 ${action.bgColor} rounded-lg flex items-center justify-center mb-3 sm:mb-4`}>
+                <action.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${action.iconColor}`} />
               </div>
               
               <h3 
-                className="text-lg font-semibold text-gray-900 mb-2"
+                className="text-base sm:text-lg font-semibold text-gray-900 mb-2"
                 style={{ fontFamily: 'Montserrat' }}
               >
                 {action.title}
               </h3>
               
               <p 
-                className="text-gray-600 mb-4 text-sm"
+                className="text-gray-600 mb-3 sm:mb-4 text-xs sm:text-sm"
                 style={{ fontFamily: 'Inter' }}
               >
                 {action.description}
@@ -94,16 +94,16 @@ const MainActions: React.FC<MainActionsProps> = ({ onNavigate }) => {
               <div className="space-y-2">
                 <button
                   onClick={() => handleActionClick(action.primaryPage)}
-                  className={`w-full ${action.buttonColor} text-white py-2 px-4 rounded-lg font-medium transition-all duration-200 hover:scale-105 flex items-center justify-center`}
+                  className={`w-full ${action.buttonColor} text-white py-2 px-3 sm:px-4 rounded-lg font-medium transition-all duration-200 hover:scale-105 flex items-center justify-center text-sm sm:text-base`}
                   style={{ fontFamily: 'Inter' }}
                 >
                   {action.primaryAction}
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                 </button>
                 
                 <button
                   onClick={() => handleActionClick(action.secondaryPage)}
-                  className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium transition-all duration-200 hover:bg-gray-50"
+                  className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-3 sm:px-4 rounded-lg font-medium transition-all duration-200 hover:bg-gray-50 text-sm sm:text-base"
                   style={{ fontFamily: 'Inter' }}
                 >
                   {action.secondaryAction}
