@@ -38,7 +38,7 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="https://instagram.com/localhy" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 hover:text-green-500 transition-colors">
+                <a href="https://www.instagram.com/localhy_official/" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 hover:text-green-500 transition-colors">
                   <span>Instagram</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
