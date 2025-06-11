@@ -38,10 +38,11 @@ const ActivityFeed: React.FC = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadActivities()
-    
-    // Set up real-time subscriptions for new content
+    // Only proceed if user is available
     if (user) {
+      loadActivities()
+      
+      // Set up real-time subscriptions for new content
       const subscription = subscribeToUserNotifications(user.id, (payload) => {
         // When new content is created, refresh the activity feed
         if (payload.eventType === 'INSERT' && 
