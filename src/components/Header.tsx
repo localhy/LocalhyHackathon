@@ -30,13 +30,29 @@ const Header = () => {
               Localhy
             </span>
           </div>
+          
+          {/* Join Beta button - hidden on mobile, visible on sm and up */}
           <button
             onClick={handleJoinBeta}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg"
+            className="hidden sm:block bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg"
             style={{ fontFamily: 'Inter' }}
           >
             Join Beta
           </button>
+          
+          {/* Bolt.new Badge - visible on mobile, hidden on sm and up */}
+          <a
+            href="https://bolt.new/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block sm:hidden hover:scale-105 transition-transform duration-200"
+          >
+            <img
+              src="/black_circle_360x360 (1).png"
+              alt="Powered by Bolt.new"
+              className="w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-200"
+            />
+          </a>
         </div>
       </div>
     </header>
