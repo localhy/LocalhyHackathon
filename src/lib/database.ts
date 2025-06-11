@@ -624,6 +624,67 @@ export const getPromotionPricing = (promotionType: string, durationDays: number)
   return basePrice * durationDays
 }
 
+// Referral Job Posting Cost
+export const REFERRAL_JOB_POSTING_COST = 5 // 5 credits to post a referral job
+
+// Function to create referral job with payment
+export const createReferralJobWithPayment = async (jobData: CreateReferralJobData): Promise<ReferralJob | null> => {
+  try {
+    // First check if user has enough credits
+    const userCredits = await getUserCredits(jobData.user_id)
+    
+    if (userCredits < REFERRAL_JOB_POSTING_COST) {
+      throw new Error(`Insufficient credits. You need ${REFERRAL_JOB_POSTING_COST} credits to post a referral job. You have ${userCredits} credits.`)
+    }
+
+    // Deduct credits first
+    await deductCreditsFromUser(
+      jobData.user_id,
+      REFERRAL_JOB_POSTING_COST,
+      `Referral job posting: ${jobData.title}`
+    )
+
+    // Then create the referral job
+    const { data, error } = await supabase
+      .from('referral_jobs')
+      .insert({
+        user_id: jobData.user_id,
+        title: jobData.title,
+        business_name: jobData.business_name,
+        description: jobData.description,
+        commission: jobData.commission,
+        commission_type: jobData.commission_type,
+        location: jobData.location,
+        category: jobData.category,
+        requirements: jobData.requirements,
+        referral_type: jobData.referral_type,
+        logo_url: jobData.logo_url,
+        website: jobData.website,
+        cta_text: jobData.cta_text,
+        terms: jobData.terms
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating referral job:', error)
+      // If job creation fails, we should refund the credits
+      await addCreditsToUser(
+        jobData.user_id,
+        REFERRAL_JOB_POSTING_COST,
+        REFERRAL_JOB_POSTING_COST,
+        `Refund for failed referral job posting: ${jobData.title}`
+      )
+      throw new Error(error.message)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in createReferralJobWithPayment:', error)
+    throw error
+  }
+}
+
 // Ideas Functions
 export interface Idea {
   id: string

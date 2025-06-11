@@ -1,10 +1,110 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Loader, AlertCircle, CheckCircle, Upload, DollarSign, Building, MapPin, Tag, FileText, Globe, Phone, Mail } from 'lucide-react'
+import { ArrowLeft, Save, Loader, AlertCircle, CheckCircle, Upload, DollarSign, Building, MapPin, Tag, FileText, Globe, Phone, Mail, CreditCard, Info } from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { createReferralJob, uploadFile } from '../lib/database'
+import { createReferralJobWithPayment, uploadFile, getUserCredits, REFERRAL_JOB_POSTING_COST } from '../lib/database'
+
+// Payment confirmation modal component
+const PaymentConfirmationModal = ({ 
+  isVisible, 
+  onClose, 
+  onConfirm, 
+  userCredits, 
+  cost, 
+  isProcessing 
+}: { 
+  isVisible: boolean
+  onClose: () => void
+  onConfirm: () => void
+  userCredits: number
+  cost: number
+  isProcessing: boolean
+}) => {
+  if (!isVisible) return null
+
+  const canAfford = userCredits >= cost
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold" style={{ fontFamily: 'Montserrat' }}>
+            Confirm Posting
+          </h3>
+        </div>
+
+        <div className="mb-6">
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Info className="h-5 w-5 text-blue-500" />
+              <h4 className="font-medium text-blue-800">Posting Fee</h4>
+            </div>
+            <p className="text-blue-700 text-sm">
+              There is a fee of {cost} credits to post a referral job. This helps ensure quality listings and supports the platform.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-600">Your Credits:</span>
+              <span className={`font-semibold ${canAfford ? 'text-green-600' : 'text-red-600'}`}>
+                {userCredits} credits
+              </span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-600">Posting Fee:</span>
+              <span className="font-semibold text-gray-800">{cost} credits</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-gray-200">
+              <span className="text-gray-700 font-medium">Remaining Balance:</span>
+              <span className={`font-semibold ${canAfford ? 'text-green-600' : 'text-red-600'}`}>
+                {userCredits - cost} credits
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex space-x-3">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          {canAfford ? (
+            <button
+              onClick={onConfirm}
+              disabled={isProcessing}
+              className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-600 disabled:bg-gray-300 flex items-center justify-center space-x-2"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4" />
+                  <span>Pay & Publish</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => window.location.href = '/dashboard/wallet?tab=purchase'}
+              className="flex-1 bg-green-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-600 flex items-center justify-center space-x-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              <span>Buy Credits</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const CreatePost = () => {
   const { user } = useAuth()
@@ -14,6 +114,8 @@ const CreatePost = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [userCredits, setUserCredits] = useState(0)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   // Get post type from URL query parameter
   const searchParams = new URLSearchParams(location.search)
@@ -44,6 +146,24 @@ const CreatePost = () => {
     'Restaurant', 'Retail', 'Professional Services', 'Health & Wellness', 'Technology',
     'Real Estate', 'Education', 'Entertainment', 'Transportation', 'Home Services', 'Other'
   ]
+
+  useEffect(() => {
+    // Load user credits when component mounts
+    if (user) {
+      loadUserCredits()
+    }
+  }, [user])
+
+  const loadUserCredits = async () => {
+    if (!user) return
+    
+    try {
+      const credits = await getUserCredits(user.id)
+      setUserCredits(credits)
+    } catch (error) {
+      console.error('Error loading user credits:', error)
+    }
+  }
 
   const handleNavigation = (page: string) => {
     setSidebarOpen(false)
@@ -111,6 +231,36 @@ const CreatePost = () => {
     }
   }
 
+  const validateForm = () => {
+    // Validate required fields
+    if (!formData.title.trim()) {
+      setError('Title is required')
+      return false
+    }
+    if (!formData.business_name.trim()) {
+      setError('Business name is required')
+      return false
+    }
+    if (!formData.description.trim()) {
+      setError('Description is required')
+      return false
+    }
+    if (!formData.location.trim()) {
+      setError('Location is required')
+      return false
+    }
+    if (!formData.category) {
+      setError('Category is required')
+      return false
+    }
+    if (formData.commission <= 0) {
+      setError('Commission must be greater than 0')
+      return false
+    }
+    
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -119,29 +269,18 @@ const CreatePost = () => {
       return
     }
 
-    // Validate required fields
-    if (!formData.title.trim()) {
-      setError('Title is required')
+    // Validate form
+    if (!validateForm()) {
       return
     }
-    if (!formData.business_name.trim()) {
-      setError('Business name is required')
-      return
-    }
-    if (!formData.description.trim()) {
-      setError('Description is required')
-      return
-    }
-    if (!formData.location.trim()) {
-      setError('Location is required')
-      return
-    }
-    if (!formData.category) {
-      setError('Category is required')
-      return
-    }
-    if (formData.commission <= 0) {
-      setError('Commission must be greater than 0')
+
+    // Show payment confirmation modal
+    setShowPaymentModal(true)
+  }
+
+  const handlePaymentConfirm = async () => {
+    if (!user) {
+      setError('You must be logged in to create a post')
       return
     }
 
@@ -151,7 +290,7 @@ const CreatePost = () => {
 
     try {
       if (postType === 'referral') {
-        const result = await createReferralJob({
+        const result = await createReferralJobWithPayment({
           user_id: user.id,
           title: formData.title.trim(),
           business_name: formData.business_name.trim(),
@@ -170,6 +309,8 @@ const CreatePost = () => {
 
         if (result) {
           setSuccess('Referral job created successfully!')
+          // Update user credits
+          await loadUserCredits()
           setTimeout(() => {
             navigate('/dashboard/my-posts')
           }, 2000)
@@ -185,6 +326,7 @@ const CreatePost = () => {
       setError(error.message || 'Failed to create post. Please try again.')
     } finally {
       setLoading(false)
+      setShowPaymentModal(false)
     }
   }
 
@@ -374,6 +516,28 @@ const CreatePost = () => {
                 )}
               </div>
             )}
+
+            {/* Posting Fee Notice */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
+              <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-blue-800 mb-1" style={{ fontFamily: 'Inter' }}>
+                  Posting Fee: {REFERRAL_JOB_POSTING_COST} Credits
+                </h3>
+                <p className="text-blue-700 text-sm" style={{ fontFamily: 'Inter' }}>
+                  There is a fee of {REFERRAL_JOB_POSTING_COST} credits to post a referral job. 
+                  Your current balance: <span className="font-semibold">{userCredits} credits</span>
+                </p>
+                {userCredits < REFERRAL_JOB_POSTING_COST && (
+                  <button 
+                    onClick={() => navigate('/dashboard/wallet?tab=purchase')}
+                    className="mt-2 text-blue-700 hover:text-blue-800 font-medium text-sm underline"
+                  >
+                    Buy more credits
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-8">
@@ -755,6 +919,16 @@ const CreatePost = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Confirmation Modal */}
+      <PaymentConfirmationModal
+        isVisible={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onConfirm={handlePaymentConfirm}
+        userCredits={userCredits}
+        cost={REFERRAL_JOB_POSTING_COST}
+        isProcessing={loading}
+      />
 
       {sidebarOpen && (
         <div 
