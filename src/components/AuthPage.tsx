@@ -78,9 +78,9 @@ const AuthPage = () => {
       {/* Header - Mobile Only */}
       <header className="lg:hidden bg-white border-b border-gray-200 px-4 py-4">
         <div className="flex items-center justify-center space-x-2">
-          <MapPin className="h-8 w-8 text-green-500" />
+          <MapPin className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
           <span 
-            className="text-2xl font-bold text-green-500"
+            className="text-xl sm:text-2xl font-bold text-green-500"
             style={{ fontFamily: 'Montserrat' }}
           >
             Localhy
@@ -89,18 +89,18 @@ const AuthPage = () => {
       </header>
 
       {/* Left Column - Images */}
-      <div className="lg:w-1/2 h-64 lg:h-screen relative">
+      <div className="lg:w-1/2 h-48 sm:h-64 lg:h-screen relative">
         <ImageCarousel />
       </div>
 
       {/* Right Column - Forms */}
-      <div className="lg:w-1/2 flex flex-col justify-center px-6 py-12 lg:px-12 bg-white">
+      <div className="lg:w-1/2 flex flex-col justify-center px-4 sm:px-6 py-8 sm:py-12 lg:px-12 bg-white">
         <div className="max-w-md mx-auto w-full">
           {/* Logo - Desktop Only */}
-          <div className="hidden lg:flex items-center justify-center space-x-2 mb-12">
-            <MapPin className="h-10 w-10 text-green-500" />
+          <div className="hidden lg:flex items-center justify-center space-x-2 mb-8 lg:mb-12">
+            <MapPin className="h-8 w-8 lg:h-10 lg:w-10 text-green-500" />
             <span 
-              className="text-3xl font-bold text-green-500 relative"
+              className="text-2xl lg:text-3xl font-bold text-green-500 relative"
               style={{ fontFamily: 'Montserrat' }}
             >
               Localhy
@@ -109,10 +109,10 @@ const AuthPage = () => {
           </div>
 
           {/* Form Toggle Buttons */}
-          <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
+          <div className="flex mb-6 sm:mb-8 bg-gray-100 rounded-lg p-1">
             <button
               onClick={switchToSignUp}
-              className={`flex-1 py-3 px-4 rounded-md font-semibold transition-all duration-200 ${
+              className={`flex-1 py-2 sm:py-3 px-3 sm:px-4 rounded-md font-semibold transition-all duration-200 text-sm sm:text-base ${
                 !isLogin 
                   ? 'bg-green-500 text-white shadow-sm' 
                   : 'text-gray-600 hover:text-gray-800'
@@ -123,7 +123,7 @@ const AuthPage = () => {
             </button>
             <button
               onClick={switchToLogin}
-              className={`flex-1 py-3 px-4 rounded-md font-semibold transition-all duration-200 ${
+              className={`flex-1 py-2 sm:py-3 px-3 sm:px-4 rounded-md font-semibold transition-all duration-200 text-sm sm:text-base ${
                 isLogin 
                   ? 'bg-green-500 text-white shadow-sm' 
                   : 'text-gray-600 hover:text-gray-800'
@@ -135,7 +135,7 @@ const AuthPage = () => {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm" style={{ fontFamily: 'Inter' }}>
                 {error}
               </p>
@@ -143,17 +143,17 @@ const AuthPage = () => {
           )}
 
           {/* Forms Container */}
-          <div className="bg-gray-50 rounded-xl p-8 shadow-lg">
+          <div className="bg-gray-50 rounded-xl p-4 sm:p-6 lg:p-8 shadow-lg">
             {/* Sign Up Form */}
             <div className={`transition-all duration-300 ${isLogin ? 'hidden' : 'block'}`}>
               <h2 
-                className="text-2xl font-bold text-gray-900 mb-6 text-center"
+                className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center"
                 style={{ fontFamily: 'Montserrat' }}
               >
                 Join Localhy
               </h2>
 
-              <form onSubmit={handleSignUp} className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-3 sm:space-y-4">
                 <div>
                   <label 
                     htmlFor="signup-name" 
@@ -168,7 +168,7 @@ const AuthPage = () => {
                     required
                     value={signUpData.name}
                     onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-sm sm:text-base"
                     placeholder="Your full name"
                     style={{ fontFamily: 'Inter' }}
                   />
@@ -188,7 +188,7 @@ const AuthPage = () => {
                     required
                     value={signUpData.email}
                     onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-sm sm:text-base"
                     placeholder="your.email@example.com"
                     style={{ fontFamily: 'Inter' }}
                   />
@@ -210,7 +210,7 @@ const AuthPage = () => {
                       minLength={8}
                       value={signUpData.password}
                       onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 pr-10 sm:pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-sm sm:text-base"
                       placeholder="Minimum 8 characters"
                       style={{ fontFamily: 'Inter' }}
                     />
@@ -219,7 +219,7 @@ const AuthPage = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </button>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ const AuthPage = () => {
                     required
                     value={signUpData.userType}
                     onChange={(e) => setSignUpData({ ...signUpData, userType: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-sm sm:text-base"
                     style={{ fontFamily: 'Inter' }}
                   >
                     <option value="">Select your role</option>
@@ -268,14 +268,14 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-green-500 hover:bg-yellow-400 text-white hover:text-gray-900 py-3 px-6 rounded-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-green-500 hover:bg-yellow-400 text-white hover:text-gray-900 py-2 sm:py-3 px-4 sm:px-6 rounded-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                   style={{ fontFamily: 'Inter' }}
                 >
                   {loading ? 'Creating Account...' : 'Sign Up'}
                 </button>
               </form>
 
-              <p className="mt-4 text-center text-sm text-gray-600" style={{ fontFamily: 'Inter' }}>
+              <p className="mt-3 sm:mt-4 text-center text-sm text-gray-600" style={{ fontFamily: 'Inter' }}>
                 Already have an account?{' '}
                 <button
                   onClick={switchToLogin}
@@ -289,13 +289,13 @@ const AuthPage = () => {
             {/* Login Form */}
             <div className={`transition-all duration-300 ${!isLogin ? 'hidden' : 'block'}`}>
               <h2 
-                className="text-2xl font-bold text-gray-900 mb-6 text-center"
+                className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center"
                 style={{ fontFamily: 'Montserrat' }}
               >
                 Welcome Back
               </h2>
 
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
                 <div>
                   <label 
                     htmlFor="login-email" 
@@ -310,7 +310,7 @@ const AuthPage = () => {
                     required
                     value={loginData.email}
                     onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-sm sm:text-base"
                     placeholder="your.email@example.com"
                     style={{ fontFamily: 'Inter' }}
                   />
@@ -331,7 +331,7 @@ const AuthPage = () => {
                       required
                       value={loginData.password}
                       onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 pr-10 sm:pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors text-sm sm:text-base"
                       placeholder="Your password"
                       style={{ fontFamily: 'Inter' }}
                     />
@@ -340,7 +340,7 @@ const AuthPage = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </button>
                   </div>
                 </div>
@@ -348,14 +348,14 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-green-500 hover:bg-yellow-400 text-white hover:text-gray-900 py-3 px-6 rounded-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-green-500 hover:bg-yellow-400 text-white hover:text-gray-900 py-2 sm:py-3 px-4 sm:px-6 rounded-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                   style={{ fontFamily: 'Inter' }}
                 >
                   {loading ? 'Signing In...' : 'Login'}
                 </button>
               </form>
 
-              <div className="mt-4 text-center space-y-2">
+              <div className="mt-3 sm:mt-4 text-center space-y-2">
                 <button className="text-gray-600 hover:text-gray-800 text-sm" style={{ fontFamily: 'Inter' }}>
                   Forgot Password?
                 </button>

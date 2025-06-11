@@ -153,20 +153,20 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
+    <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
       <div className="flex items-center justify-between">
         {/* Left Side */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3 sm:space-x-4">
           <button
             onClick={onMenuClick}
-            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            className="lg:hidden p-1.5 sm:p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
           >
             <Menu className="h-5 w-5" />
           </button>
         </div>
 
         {/* Right Side */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Notifications */}
           <div className="relative">
             <button 
@@ -175,11 +175,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
                 setMessageTooltipOpen(false)
                 setDropdownOpen(false)
               }}
-              className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="relative p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
               {unreadNotificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-medium text-[10px] sm:text-xs">
                   {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
                 </span>
               )}
@@ -200,11 +200,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
                 setNotificationTooltipOpen(false)
                 setDropdownOpen(false)
               }}
-              className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="relative p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <MessageCircle className="h-5 w-5" />
+              <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
               {unreadMessageCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-medium text-[10px] sm:text-xs">
                   {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
                 </span>
               )}
@@ -225,38 +225,38 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
                 setNotificationTooltipOpen(false)
                 setMessageTooltipOpen(false)
               }}
-              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center space-x-1 sm:space-x-2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt="Profile"
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover"
                   onError={() => setAvatarUrl(null)} // Fallback if image fails to load
                 />
               ) : (
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                 </div>
               )}
-              <span className="hidden sm:block text-sm font-medium text-gray-700" style={{ fontFamily: 'Inter' }}>
+              <span className="hidden sm:block text-sm font-medium text-gray-700 max-w-24 truncate" style={{ fontFamily: 'Inter' }}>
                 {user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}
               </span>
-              <ChevronDown className="h-4 w-4 text-gray-400" />
+              <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+              <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <button 
                   onClick={handleProfileClick}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" 
+                  className="w-full text-left px-3 sm:px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" 
                   style={{ fontFamily: 'Inter' }}
                 >
                   Profile
                 </button>
                 <button 
                   onClick={handleSettingsClick}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" 
+                  className="w-full text-left px-3 sm:px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" 
                   style={{ fontFamily: 'Inter' }}
                 >
                   Settings
@@ -264,7 +264,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
                 <hr className="my-1" />
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  className="w-full text-left px-3 sm:px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   style={{ fontFamily: 'Inter' }}
                 >
                   Logout

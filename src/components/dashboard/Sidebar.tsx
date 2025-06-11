@@ -51,11 +51,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, currentPage, onNavigate, onCl
       }`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 lg:px-6 pt-8 pb-4 border-b border-gray-200">
+          <div className="flex items-center justify-between px-4 lg:px-6 pt-6 sm:pt-8 pb-4 border-b border-gray-200">
             <div className="flex items-center space-x-2">
-              <MapPin className="h-8 w-8 text-green-500" />
+              <MapPin className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
               <span 
-                className="text-xl font-bold text-gray-900"
+                className="text-lg sm:text-xl font-bold text-gray-900"
                 style={{ fontFamily: 'Montserrat' }}
               >
                 Localhy
@@ -70,32 +70,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, currentPage, onNavigate, onCl
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-3 sm:px-4 py-4 sm:py-6 space-y-1 sm:space-y-2 overflow-y-auto">
             {navigationItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center space-x-3 px-2 sm:px-3 py-2 rounded-lg text-left transition-colors text-sm sm:text-base ${
                   currentPage === item.id
                     ? 'bg-green-50 text-green-600 border-r-2 border-green-500'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
                 style={{ fontFamily: 'Inter' }}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 <span className="font-medium">{item.label}</span>
               </button>
             ))}
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-3 sm:p-4 border-t border-gray-200">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+              className="w-full flex items-center space-x-3 px-2 sm:px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-sm sm:text-base"
               style={{ fontFamily: 'Inter' }}
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="font-medium">Logout</span>
             </button>
           </div>

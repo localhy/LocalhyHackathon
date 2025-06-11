@@ -27,7 +27,7 @@ const Newsletter = () => {
 
   if (isSubmitted) {
     return (
-      <section id="newsletter\" className="py-20 bg-gradient-to-r from-green-500 to-green-600 relative overflow-hidden">
+      <section id="newsletter" className="py-12 sm:py-16 lg:py-20 bg-gradient-to-r from-green-500 to-green-600 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <img
             src="https://images.pexels.com/photos/5668858/pexels-photo-5668858.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
@@ -37,24 +37,24 @@ const Newsletter = () => {
         </div>
         
         <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
-              <Mail className="h-8 w-8 text-green-500" />
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 sm:p-8">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
             </div>
             <h2 
-              className="text-3xl font-bold text-white mb-4"
+              className="text-2xl sm:text-3xl font-bold text-white mb-3 sm:mb-4"
               style={{ fontFamily: 'Montserrat' }}
             >
               Welcome to Localhy Beta!
             </h2>
             <p 
-              className="text-xl text-white/90 mb-6"
+              className="text-lg sm:text-xl text-white/90 mb-4 sm:mb-6"
               style={{ fontFamily: 'Inter' }}
             >
               Thank you for joining! We'll send you your 50 free credits and beta access details shortly.
             </p>
             <p 
-              className="text-white/80"
+              className="text-sm sm:text-base text-white/80"
               style={{ fontFamily: 'Inter' }}
             >
               Check your email for next steps and exclusive updates.
@@ -66,7 +66,7 @@ const Newsletter = () => {
   }
 
   return (
-    <section id="newsletter" className="py-20 bg-gradient-to-r from-green-500 to-green-600 relative overflow-hidden">
+    <section id="newsletter" className="py-12 sm:py-16 lg:py-20 bg-gradient-to-r from-green-500 to-green-600 relative overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 opacity-10">
         <img
@@ -77,24 +77,24 @@ const Newsletter = () => {
       </div>
       
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           <h2 
-            className="text-3xl sm:text-4xl font-bold text-white mb-6"
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4 sm:mb-6"
             style={{ fontFamily: 'Montserrat' }}
           >
             Join the Localhy Beta & Newsletter
           </h2>
           <p 
-            className="text-xl text-white/90 mb-8"
+            className="text-lg sm:text-xl text-white/90 mb-6 sm:mb-8"
             style={{ fontFamily: 'Inter' }}
           >
             Be the first to try Localhy. Get 50 free credits and stay updated on local business opportunities.
           </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid sm:grid-cols-2 gap-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 sm:p-8">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-white mb-2" style={{ fontFamily: 'Inter' }}>
                   Name *
@@ -106,7 +106,7 @@ const Newsletter = () => {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-sm sm:text-base"
                   placeholder="Your full name"
                 />
               </div>
@@ -122,7 +122,7 @@ const Newsletter = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-sm sm:text-base"
                   placeholder="your.email@example.com"
                 />
               </div>
@@ -138,7 +138,7 @@ const Newsletter = () => {
                 required
                 value={formData.userType}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm text-sm sm:text-base"
               >
                 <option value="" className="text-gray-900">Select your primary role</option>
                 <option value="business-owner" className="text-gray-900">Business Owner</option>
@@ -158,14 +158,14 @@ const Newsletter = () => {
                 rows={3}
                 value={formData.challenge}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm resize-none"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent backdrop-blur-sm resize-none text-sm sm:text-base"
                 placeholder="Tell us about your challenges..."
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 py-3 sm:py-4 px-6 sm:px-8 rounded-lg font-semibold text-base sm:text-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
               style={{ fontFamily: 'Inter' }}
             >
               Join the Beta - Get 50 Free Credits
@@ -173,18 +173,18 @@ const Newsletter = () => {
           </form>
 
           {/* Incentives */}
-          <div className="mt-8 space-y-4">
+          <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
             <div className="flex items-center space-x-3 text-white/90">
-              <Gift className="h-5 w-5 text-yellow-400" />
-              <span style={{ fontFamily: 'Inter' }}>Get 50 free credits to try promoted posts or referrals</span>
+              <Gift className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 flex-shrink-0" />
+              <span className="text-sm sm:text-base" style={{ fontFamily: 'Inter' }}>Get 50 free credits to try promoted posts or referrals</span>
             </div>
             <div className="flex items-center space-x-3 text-white/90">
-              <Mail className="h-5 w-5 text-yellow-400" />
-              <span style={{ fontFamily: 'Inter' }}>Exclusive updates via our newsletter</span>
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 flex-shrink-0" />
+              <span className="text-sm sm:text-base" style={{ fontFamily: 'Inter' }}>Exclusive updates via our newsletter</span>
             </div>
             <div className="flex items-center space-x-3 text-white/90">
-              <Shield className="h-5 w-5 text-yellow-400" />
-              <span style={{ fontFamily: 'Inter' }}>We'll never share your info</span>
+              <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400 flex-shrink-0" />
+              <span className="text-sm sm:text-base" style={{ fontFamily: 'Inter' }}>We'll never share your info</span>
             </div>
           </div>
         </div>
