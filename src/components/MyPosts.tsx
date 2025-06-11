@@ -74,7 +74,8 @@ const MyPosts = () => {
     } catch (err) {
       console.error('Error loading user posts:', err)
       setError('Failed to load your posts. Please try again.')
-    } finally {
+    }
+    finally {
       setLoading(false)
     }
   }
@@ -124,8 +125,9 @@ const MyPosts = () => {
       navigate(`/dashboard/my-posts/edit/idea/${id}`)
     } else if (type === 'referral') {
       navigate(`/dashboard/my-posts/edit/referral/${id}`)
-    } else {
-      navigate(`/dashboard/my-posts/edit/${type}/${id}`)
+    } else if (type === 'tool') {
+      // For tools, navigate to the tool edit page
+      navigate(`/dashboard/my-posts/edit/tool/${id}`)
     }
   }
 
@@ -318,7 +320,7 @@ const MyPosts = () => {
           <div className="max-w-6xl mx-auto">
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
                   onClick={() => {
                     setError('')
@@ -469,6 +471,15 @@ const MyPosts = () => {
                       >
                         {post.title}
                       </h3>
+                      
+                      {post.type === 'referral' && (
+                        <p 
+                          className="text-blue-600 font-medium text-sm mb-2"
+                          style={{ fontFamily: 'Inter' }}
+                        >
+                          {(post as ReferralJob).business_name}
+                        </p>
+                      )}
                       
                       <p 
                         className="text-gray-600 text-sm mb-4 line-clamp-3"
