@@ -5,7 +5,6 @@ import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import WelcomeBlock from './dashboard/WelcomeBlock'
 import MainActions from './dashboard/MainActions'
-import ActivityFeed from './dashboard/ActivityFeed'
 import FloatingActionButton from './dashboard/FloatingActionButton'
 import DailyTip from './dashboard/DailyTip'
 import GoalsMilestones from './dashboard/GoalsMilestones'
@@ -87,9 +86,6 @@ const Dashboard = () => {
 
               {/* Main Actions */}
               <MainActions onNavigate={handleNavigation} />
-
-              {/* Activity Feed */}
-              <ActivityFeed />
 
               {/* Daily Tip */}
               <DailyTip onNavigate={handleNavigation} />
