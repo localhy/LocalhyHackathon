@@ -20,6 +20,20 @@ const Hero = () => {
           className="w-full h-full object-cover"
         />
       </div>
+
+      {/* Bolt.new Badge - Top Right */}
+      <a
+        href="https://bolt.new/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-8 lg:right-8 z-30 hover:scale-105 transition-transform duration-200"
+      >
+        <img
+          src="/black_circle_360x360 (1).png"
+          alt="Powered by Bolt.new"
+          className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-200"
+        />
+      </a>
       
       {/* Content */}
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
