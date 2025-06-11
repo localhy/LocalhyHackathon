@@ -451,6 +451,32 @@ export const getReferralJobs = async (filters?: {
   return data || []
 }
 
+export const getReferralJobById = async (id: string): Promise<ReferralJob | null> => {
+  const { data, error } = await supabase
+    .from('referral_jobs')
+    .select(`
+      *,
+      user_profiles!inner(name, avatar_url, user_type, bio)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching referral job:', error)
+    return null
+  }
+
+  if (!data) return null
+
+  // Check for active promotion and increment views if found
+  const activePromotion = await getActivePromotionForContent(id, 'referral_job')
+  if (activePromotion) {
+    await incrementPromotionViews(activePromotion.id)
+  }
+
+  return data
+}
+
 export const getUserReferralJobs = async (userId: string): Promise<ReferralJob[]> => {
   const { data, error } = await supabase
     .from('referral_jobs')
