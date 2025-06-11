@@ -136,13 +136,13 @@ const ActivityFeed: React.FC = () => {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'idea':
-        return <Lightbulb className="h-4 w-4 text-green-500" />
+        return <Lightbulb className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
       case 'referral':
-        return <Building className="h-4 w-4 text-blue-500" />
+        return <Building className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
       case 'tool':
-        return <Wrench className="h-4 w-4 text-purple-500" />
+        return <Wrench className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500" />
       default:
-        return <User className="h-4 w-4 text-gray-500" />
+        return <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
     }
   }
 
@@ -187,20 +187,20 @@ const ActivityFeed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
         <h2 
-          className="text-xl font-bold text-gray-900 mb-4"
+          className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4"
           style={{ fontFamily: 'Montserrat' }}
         >
           Latest from Your Community
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse flex space-x-4">
-              <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            <div key={i} className="animate-pulse flex space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-lg"></div>
+              <div className="flex-1 space-y-1 sm:space-y-2">
+                <div className="h-3 sm:h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-2 sm:h-3 bg-gray-200 rounded w-1/2"></div>
               </div>
             </div>
           ))}
@@ -210,49 +210,49 @@ const ActivityFeed: React.FC = () => {
   }
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
       <h2 
-        className="text-xl font-bold text-gray-900 mb-4"
+        className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4"
         style={{ fontFamily: 'Montserrat' }}
       >
         Latest from Your Community
       </h2>
 
       {activities.length === 0 ? (
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="h-8 w-8 text-gray-400" />
+        <div className="text-center py-6 sm:py-8">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <User className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
           </div>
           <h3 
-            className="text-lg font-medium text-gray-900 mb-2"
+            className="text-base sm:text-lg font-medium text-gray-900 mb-2"
             style={{ fontFamily: 'Montserrat' }}
           >
             No activity yet
           </h3>
           <p 
-            className="text-gray-600 mb-4"
+            className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base"
             style={{ fontFamily: 'Inter' }}
           >
             Be the first to post an idea, create a referral job, or submit a tool to see community activity here.
           </p>
           <button
             onClick={() => navigate('/dashboard/create-new')}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium"
+            className="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base"
             style={{ fontFamily: 'Inter' }}
           >
             Create Your First Post
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {activities.map((activity) => (
             <div
               key={`${activity.type}-${activity.id}`}
-              className="flex items-center space-x-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+              className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
               onClick={() => handleActivityClick(activity)}
             >
               {/* Thumbnail or Icon */}
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 {activity.thumbnail ? (
                   <img 
                     src={activity.thumbnail} 
@@ -273,35 +273,35 @@ const ActivityFeed: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
                   <h3 
-                    className="font-medium text-gray-900 truncate"
+                    className="font-medium text-gray-900 truncate text-sm sm:text-base"
                     style={{ fontFamily: 'Inter' }}
                   >
                     {activity.title}
                   </h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(activity.type)}`}>
+                  <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${getTypeBadge(activity.type)}`}>
                     {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
                   </span>
                 </div>
                 
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-500">
                   <div className="flex items-center space-x-1">
                     {activity.user_profiles.avatar_url ? (
                       <img
                         src={activity.user_profiles.avatar_url}
                         alt={activity.author}
-                        className="w-4 h-4 rounded-full object-cover"
+                        className="w-3 h-3 sm:w-4 sm:h-4 rounded-full object-cover"
                       />
                     ) : (
-                      <User className="h-4 w-4" />
+                      <User className="h-3 w-3 sm:h-4 sm:w-4" />
                     )}
-                    <span>by {activity.author}</span>
+                    <span className="truncate max-w-[80px] sm:max-w-[120px]">by {activity.author}</span>
                   </div>
                   
-                  <span>{activity.category}</span>
+                  <span className="truncate max-w-[80px] sm:max-w-[120px]">{activity.category}</span>
                   
                   {activity.location && (
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3" />
+                    <div className="flex items-center space-x-1 truncate max-w-[80px] sm:max-w-[120px]">
+                      <MapPin className="h-2 w-2 sm:h-3 sm:w-3" />
                       <span>{activity.location}</span>
                     </div>
                   )}
@@ -310,10 +310,10 @@ const ActivityFeed: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-500 flex-shrink-0">
                 {activity.views !== undefined && (
                   <div className="flex items-center space-x-1">
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>{activity.views}</span>
                   </div>
                 )}
@@ -330,17 +330,17 @@ const ActivityFeed: React.FC = () => {
                   </div>
                 )}
                 
-                <button className="text-green-500 hover:text-green-600 font-medium text-sm">
+                <button className="text-green-500 hover:text-green-600 font-medium text-xs sm:text-sm hidden sm:block">
                   View
                 </button>
               </div>
             </div>
           ))}
           
-          <div className="text-center pt-4">
+          <div className="text-center pt-3 sm:pt-4">
             <button
               onClick={() => navigate('/dashboard/ideas-vault')}
-              className="text-green-600 hover:text-green-700 font-medium text-sm"
+              className="text-green-600 hover:text-green-700 font-medium text-xs sm:text-sm"
             >
               View All Activity →
             </button>
