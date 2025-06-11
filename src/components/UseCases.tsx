@@ -1,9 +1,12 @@
 import React from 'react';
 import { GraduationCap, Briefcase, Smartphone, Brain, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const UseCases = () => {
-  const scrollToNewsletter = () => {
-    document.getElementById('newsletter')?.scrollIntoView({ behavior: 'smooth' });
+  const navigate = useNavigate();
+
+  const handleJoinBeta = () => {
+    navigate('/auth');
   };
 
   const useCases = [
@@ -79,7 +82,7 @@ const UseCases = () => {
 
         <div className="text-center">
           <button
-            onClick={scrollToNewsletter}
+            onClick={handleJoinBeta}
             className="inline-flex items-center bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-xl group"
             style={{ fontFamily: 'Inter' }}
           >
