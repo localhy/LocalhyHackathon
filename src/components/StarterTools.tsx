@@ -1,44 +1,36 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Download, Star, ExternalLink, Search, Filter, Wrench } from 'lucide-react'
+import { Plus, Download, Star, ExternalLink, Search, Filter, Wrench, Crown, Zap, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
+import { getTools, incrementPromotionClicks, getActivePromotionForContent, type Tool } from '../lib/database'
 
 const StarterTools = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [tools, setTools] = useState<any[]>([])
+  const [tools, setTools] = useState<Tool[]>([])
   const [loading, setLoading] = useState(true)
-  const [showMockData, setShowMockData] = useState(true)
-
-  // Mock data for demonstration
-  const mockTool = {
-    id: 'mock-1',
-    title: 'Business Plan Template',
-    description: 'Complete business plan template specifically designed for local service businesses. Includes financial projections and market analysis sections.',
-    category: 'Template',
-    type: 'Free',
-    price: 0,
-    rating: 4.8,
-    downloads: 234,
-    author: 'BusinessMentor',
-    tags: ['Business Plan', 'Template', 'Local Business'],
-    createdAt: '3 days ago',
-    featured: true,
-    isMock: true
-  }
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    // Simulate loading real data
-    const timer = setTimeout(() => {
-      setTools(showMockData ? [mockTool] : [])
-      setLoading(false)
-    }, 1000)
+    loadTools()
+  }, [])
 
-    return () => clearTimeout(timer)
-  }, [showMockData])
+  const loadTools = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const fetchedTools = await getTools(20, 0) // Get up to 20 tools
+      setTools(fetchedTools)
+    } catch (err) {
+      console.error('Error loading tools:', err)
+      setError('Failed to load tools. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleNavigation = (page: string) => {
     setSidebarOpen(false)
@@ -86,12 +78,26 @@ const StarterTools = () => {
     navigate('/dashboard/create-new?tab=tool')
   }
 
-  const handleViewTool = (tool: any) => {
-    if (tool.isMock) {
-      setShowMockData(false)
-      setTools([])
+  const handleViewTool = async (tool: Tool) => {
+    // Track promotion click if this is promoted content
+    if (tool.is_promoted) {
+      try {
+        const promotion = await getActivePromotionForContent(tool.id, 'tool')
+        if (promotion) {
+          await incrementPromotionClicks(promotion.id)
+        }
+      } catch (error) {
+        console.error('Error tracking promotion click:', error)
+      }
     }
+
+    // For now, just log the action since we don't have a tool detail page yet
     console.log('View/Download tool:', tool.id)
+    
+    // If the tool has a download URL, open it
+    if (tool.download_url) {
+      window.open(tool.download_url, '_blank')
+    }
   }
 
   const getTypeColor = (type: string) => {
@@ -105,6 +111,27 @@ const StarterTools = () => {
       default:
         return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  // Get promotion badge and styling
+  const getPromotionBadge = (tool: Tool) => {
+    if (!tool.is_promoted) return null
+
+    // For now, we'll show a generic "Featured" badge
+    // In the future, you could fetch the specific promotion type and show different badges
+    return (
+      <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg">
+        <Crown className="h-3 w-3" />
+        <span>Featured</span>
+      </div>
+    )
+  }
+
+  const getPromotionStyling = (tool: Tool) => {
+    if (!tool.is_promoted) return 'border-gray-200'
+    
+    // Enhanced styling for promoted content
+    return 'border-yellow-400 ring-2 ring-yellow-100 shadow-lg'
   }
 
   if (loading) {
@@ -207,7 +234,19 @@ const StarterTools = () => {
         {/* Content */}
         <div className="flex-1 p-4 lg:p-6">
           <div className="max-w-6xl mx-auto">
-            {tools.length === 0 ? (
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <button
+                  onClick={loadTools}
+                  className="mt-2 text-red-600 hover:text-red-700 font-medium text-sm"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {tools.length === 0 && !loading && !error ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Wrench className="h-8 w-8 text-purple-500" />
@@ -237,14 +276,11 @@ const StarterTools = () => {
                 {tools.map((tool) => (
                   <div
                     key={tool.id}
-                    className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                    className={`bg-white rounded-xl p-6 shadow-sm border ${getPromotionStyling(tool)} hover:shadow-lg transition-all duration-200 cursor-pointer relative`}
                     onClick={() => handleViewTool(tool)}
                   >
-                    {tool.isMock && (
-                      <div className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full mb-3 inline-block">
-                        This is mock data
-                      </div>
-                    )}
+                    {/* Promotion badge */}
+                    {getPromotionBadge(tool)}
                     
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-2">
@@ -281,12 +317,12 @@ const StarterTools = () => {
                       </div>
                       <div className="flex items-center space-x-1">
                         <Download className="h-4 w-4" />
-                        <span>{tool.downloads}</span>
+                        <span>{tool.downloads_count}</span>
                       </div>
                     </div>
                     
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {tool.tags.slice(0, 3).map((tag: string, index: number) => (
+                      {tool.tags && tool.tags.slice(0, 3).map((tag: string, index: number) => (
                         <span
                           key={index}
                           className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded"
@@ -297,7 +333,9 @@ const StarterTools = () => {
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">by {tool.author}</span>
+                      <span className="text-sm text-gray-500">
+                        by {tool.user_profiles?.name || 'Anonymous'}
+                      </span>
                       <div className="flex items-center space-x-2">
                         {tool.price > 0 && (
                           <span className="text-green-600 font-bold text-sm">${tool.price}</span>

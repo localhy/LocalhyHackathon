@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Building, Users, Clock } from 'lucide-react'
+import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Building, Users, Clock, Crown, Zap, Target, Star } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getReferralJobs, createMessage, type ReferralJob } from '../lib/database'
+import { getReferralJobs, createMessage, incrementPromotionClicks, getActivePromotionForContent, type ReferralJob } from '../lib/database'
 
 // Share modal component
 const ShareModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, isVisible: boolean, onClose: () => void }) => {
@@ -435,7 +435,19 @@ const ReferralJobs = () => {
     navigate('/dashboard/create-new?tab=referral')
   }
 
-  const handleViewJob = (job: ReferralJob) => {
+  const handleViewJob = async (job: ReferralJob) => {
+    // Track promotion click if this is promoted content
+    if (job.is_promoted) {
+      try {
+        const promotion = await getActivePromotionForContent(job.id, 'referral_job')
+        if (promotion) {
+          await incrementPromotionClicks(promotion.id)
+        }
+      } catch (error) {
+        console.error('Error tracking promotion click:', error)
+      }
+    }
+
     navigate(`/dashboard/referral-jobs/${job.id}`)
   }
 
@@ -536,6 +548,27 @@ const ReferralJobs = () => {
     urgencyFilter !== 'all' ? urgencyFilter : '',
     sortBy !== 'newest' ? sortBy : ''
   ].filter(Boolean).length
+
+  // Get promotion badge and styling
+  const getPromotionBadge = (job: ReferralJob) => {
+    if (!job.is_promoted) return null
+
+    // For now, we'll show a generic "Featured" badge
+    // In the future, you could fetch the specific promotion type and show different badges
+    return (
+      <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg">
+        <Crown className="h-3 w-3" />
+        <span>Featured</span>
+      </div>
+    )
+  }
+
+  const getPromotionStyling = (job: ReferralJob) => {
+    if (!job.is_promoted) return 'border-gray-200'
+    
+    // Enhanced styling for promoted content
+    return 'border-yellow-400 ring-2 ring-yellow-100 shadow-lg'
+  }
 
   if (loading && jobs.length === 0) {
     return (
@@ -811,7 +844,7 @@ const ReferralJobs = () => {
                       <div
                         key={job.id}
                         ref={isLastItem ? lastJobElementRef : null}
-                        className={`bg-white rounded-xl shadow-sm border ${isPromoted ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group`}
+                        className={`bg-white rounded-xl shadow-sm border ${getPromotionStyling(job)} hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group`}
                         onClick={() => handleViewJob(job)}
                       >
                         {/* Thumbnail Image - 16:9 ratio */}
@@ -852,7 +885,7 @@ const ReferralJobs = () => {
                           </button>
                           
                           {/* Commission overlay */}
-                          <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
+                          <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
                             {job.commission_type === 'percentage' ? (
                               <span>{job.commission}%</span>
                             ) : (
@@ -863,12 +896,8 @@ const ReferralJobs = () => {
                             )}
                           </div>
                           
-                          {/* Featured badge - if promoted */}
-                          {isPromoted && (
-                            <div className="absolute top-3 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                              Featured
-                            </div>
-                          )}
+                          {/* Promotion badge */}
+                          {getPromotionBadge(job)}
                           
                           {/* Category badge - bottom left */}
                           <div className="absolute bottom-3 left-3 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag } from 'lucide-react'
+import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Star, Crown, Zap, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getIdeas, likeIdea, bookmarkIdea, hasUserPurchasedContent, type Idea } from '../lib/database'
+import { getIdeas, likeIdea, bookmarkIdea, hasUserPurchasedContent, incrementPromotionClicks, getActivePromotionForContent, type Idea } from '../lib/database'
 
 // Mobile long press preview component
 const IdeaPreview = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisible: boolean, onClose: () => void }) => {
@@ -378,11 +378,24 @@ const IdeasVault = () => {
     navigate('/dashboard/create-new?tab=idea')
   }
 
-  const handleViewIdea = (idea: Idea) => {
+  const handleViewIdea = async (idea: Idea) => {
     if (isLongPress) {
       setIsLongPress(false)
       return
     }
+
+    // Track promotion click if this is promoted content
+    if (idea.is_promoted) {
+      try {
+        const promotion = await getActivePromotionForContent(idea.id, 'idea')
+        if (promotion) {
+          await incrementPromotionClicks(promotion.id)
+        }
+      } catch (error) {
+        console.error('Error tracking promotion click:', error)
+      }
+    }
+
     navigate(`/dashboard/ideas/${idea.id}`)
   }
 
@@ -493,6 +506,27 @@ const IdeasVault = () => {
     priceFilter !== 'all' ? priceFilter : '',
     sortBy !== 'newest' ? sortBy : ''
   ].filter(Boolean).length
+
+  // Get promotion badge and styling
+  const getPromotionBadge = (idea: Idea) => {
+    if (!idea.is_promoted) return null
+
+    // For now, we'll show a generic "Featured" badge
+    // In the future, you could fetch the specific promotion type and show different badges
+    return (
+      <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg">
+        <Crown className="h-3 w-3" />
+        <span>Featured</span>
+      </div>
+    )
+  }
+
+  const getPromotionStyling = (idea: Idea) => {
+    if (!idea.is_promoted) return 'border-gray-200'
+    
+    // Enhanced styling for promoted content
+    return 'border-yellow-400 ring-2 ring-yellow-100 shadow-lg'
+  }
 
   if (loading && ideas.length === 0) {
     return (
@@ -756,7 +790,7 @@ const IdeasVault = () => {
                       <div
                         key={idea.id}
                         ref={isLastItem ? lastIdeaElementRef : null}
-                        className={`bg-white rounded-xl shadow-sm border ${isPromoted ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-gray-200'} hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group`}
+                        className={`bg-white rounded-xl shadow-sm border ${getPromotionStyling(idea)} hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group`}
                         onClick={() => handleViewIdea(idea)}
                         onTouchStart={() => handleTouchStart(idea)}
                         onTouchEnd={handleTouchEnd}
@@ -801,18 +835,14 @@ const IdeasVault = () => {
                           
                           {/* Price overlay - if monetized */}
                           {isPaid && (
-                            <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
+                            <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
                               <Lock className="h-3 w-3" />
                               <span>${idea.price}</span>
                             </div>
                           )}
                           
-                          {/* Featured badge - if promoted */}
-                          {isPromoted && (
-                            <div className="absolute top-3 left-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                              Featured
-                            </div>
-                          )}
+                          {/* Promotion badge */}
+                          {getPromotionBadge(idea)}
                           
                           {/* Category badge - bottom left */}
                           <div className="absolute bottom-3 left-3 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
