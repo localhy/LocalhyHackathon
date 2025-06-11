@@ -52,6 +52,18 @@ export interface CreateTransactionData {
   metadata?: any
 }
 
+// Purchased Content Types
+export interface PurchasedContent {
+  id: string
+  user_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
+  purchase_date: string
+  price_paid: number
+  created_at: string
+  updated_at: string
+}
+
 // User Profile Functions
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
@@ -401,6 +413,7 @@ export const processWithdrawal = async (
   }
 }
 
+// Updated purchaseContent function to also insert into purchased_content table
 export const purchaseContent = async (
   buyerUserId: string,
   creatorUserId: string,
@@ -422,10 +435,52 @@ export const purchaseContent = async (
       throw new Error(error.message)
     }
 
+    // Also insert into purchased_content table for tracking
+    const { error: purchaseError } = await supabase
+      .from('purchased_content')
+      .insert({
+        user_id: buyerUserId,
+        content_id: contentId,
+        content_type: contentType,
+        price_paid: priceInCredits
+      })
+
+    if (purchaseError) {
+      console.error('Error recording purchase:', purchaseError)
+      // Don't throw here as the main transaction succeeded
+    }
+
     return data
   } catch (error) {
     console.error('Error in purchaseContent:', error)
     throw error
+  }
+}
+
+// New function to check if user has purchased content
+export const hasUserPurchasedContent = async (
+  userId: string, 
+  contentId: string, 
+  contentType: string
+): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('purchased_content')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('content_id', contentId)
+      .eq('content_type', contentType)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Error checking purchase status:', error)
+      return false
+    }
+
+    return !!data
+  } catch (error) {
+    console.error('Error in hasUserPurchasedContent:', error)
+    return false
   }
 }
 
@@ -870,10 +925,9 @@ export const getUserBookmarkedIdeas = async (userId: string): Promise<Idea[]> =>
 // Messages Functions
 export interface Message {
   id: string
+  conversation_id: string
   sender_id: string
-  recipient_id: string
   content: string
-  subject?: string
   read: boolean
   created_at: string
 }
