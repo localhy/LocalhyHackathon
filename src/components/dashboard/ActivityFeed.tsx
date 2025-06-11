@@ -74,7 +74,7 @@ const ActivityFeed: React.FC = () => {
       const allActivities: ActivityItem[] = [
         ...ideas.map(idea => ({
           id: idea.id,
-          title: idea.title,
+          title: idea.title || 'Untitled Idea',
           author: idea.user_profiles?.name || 'Anonymous',
           type: 'idea' as const,
           thumbnail: idea.thumbnail_url || undefined,
@@ -90,7 +90,7 @@ const ActivityFeed: React.FC = () => {
         })),
         ...referralJobs.map(job => ({
           id: job.id,
-          title: job.title,
+          title: job.title || 'Untitled Referral Job',
           author: job.user_profiles?.name || 'Business Owner',
           type: 'referral' as const,
           thumbnail: job.logo_url || undefined,
@@ -106,7 +106,7 @@ const ActivityFeed: React.FC = () => {
         })),
         ...tools.map(tool => ({
           id: tool.id,
-          title: tool.title,
+          title: tool.title || 'Untitled Tool',
           author: tool.user_profiles?.name || 'Creator',
           type: 'tool' as const,
           category: tool.category,
