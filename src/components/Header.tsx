@@ -14,10 +14,6 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleJoinBeta = () => {
-    navigate('/auth');
-  };
-
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'
@@ -31,21 +27,12 @@ const Header = () => {
             </span>
           </div>
           
-          {/* Join Beta button - hidden on mobile, visible on sm and up */}
-          <button
-            onClick={handleJoinBeta}
-            className="hidden sm:block bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg"
-            style={{ fontFamily: 'Inter' }}
-          >
-            Join Beta
-          </button>
-          
-          {/* Bolt.new Badge - visible on mobile, hidden on sm and up */}
+          {/* Bolt.new Badge - visible on all screen sizes */}
           <a
             href="https://bolt.new/"
             target="_blank"
             rel="noopener noreferrer"
-            className="block sm:hidden hover:scale-105 transition-transform duration-200"
+            className="hover:scale-105 transition-transform duration-200"
           >
             <img
               src="/black_circle_360x360 (1).png"
