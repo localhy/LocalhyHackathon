@@ -8,7 +8,9 @@ import {
   getUserProfile, 
   getUserNotifications,
   subscribeToUserNotifications,
-  type Notification 
+  subscribeToUserMessages,
+  type Notification,
+  type Message 
 } from '../../lib/database'
 
 interface TopBarProps {
@@ -52,9 +54,10 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
   useEffect(() => {
     if (user) {
       loadNotificationCount()
+      loadMessageCount()
       
       // Set up real-time subscription for notifications
-      const subscription = subscribeToUserNotifications(user.id, (payload) => {
+      const notificationSubscription = subscribeToUserNotifications(user.id, (payload) => {
         if (payload.eventType === 'INSERT') {
           // New notification added
           if (!payload.new.read) {
@@ -73,8 +76,26 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
         }
       })
 
+      // Set up real-time subscription for messages
+      const messageSubscription = subscribeToUserMessages(user.id, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newMessage = payload.new as Message
+          // Only count messages sent TO the current user (not from them)
+          if (newMessage.sender_id !== user.id && !newMessage.read) {
+            setUnreadMessageCount(prev => prev + 1)
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          // Message updated (likely marked as read)
+          const updatedMessage = payload.new as Message
+          if (payload.old.read === false && updatedMessage.read === true && updatedMessage.sender_id !== user.id) {
+            setUnreadMessageCount(prev => Math.max(0, prev - 1))
+          }
+        }
+      })
+
       return () => {
-        subscription.unsubscribe()
+        notificationSubscription.unsubscribe()
+        messageSubscription.unsubscribe()
       }
     }
   }, [user])
@@ -88,6 +109,18 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick, user }) => {
       setUnreadNotificationCount(unreadCount)
     } catch (error) {
       console.error('Error loading notification count:', error)
+    }
+  }
+
+  const loadMessageCount = async () => {
+    if (!user) return
+
+    try {
+      // For now, start with 0 unread messages since this would require complex database queries
+      // In a real implementation, you would fetch unread message count for the user
+      setUnreadMessageCount(0)
+    } catch (error) {
+      console.error('Error loading message count:', error)
     }
   }
 
