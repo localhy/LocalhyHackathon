@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getIdeas, likeIdea, bookmarkIdea, type Idea } from '../lib/database'
+import { getIdeas, likeIdea, bookmarkIdea, hasUserPurchasedContent, type Idea } from '../lib/database'
 
 // Mobile long press preview component
 const IdeaPreview = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisible: boolean, onClose: () => void }) => {
@@ -38,8 +38,9 @@ const IdeaPreview = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisibl
             <X className="h-4 w-4" />
           </button>
           {idea.price > 0 && (
-            <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-              ${idea.price}
+            <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center space-x-1">
+              <Lock className="h-3 w-3" />
+              <span>${idea.price}</span>
             </div>
           )}
         </div>
@@ -77,7 +78,7 @@ const IdeaPreview = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisibl
               onClick={onClose}
               className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
             >
-              Read Full
+              {idea.price > 0 ? `Unlock for $${idea.price}` : 'Read Full'}
             </button>
           </div>
         </div>
@@ -218,7 +219,7 @@ const IdeasVault = () => {
 
   // Filter options
   const categories = [
-    'Food & Beverage', 'Technology', 'Fashion', 'Health & Wellness', 'Education',
+    'Food & Beverage', 'Technology', 'Fashion', 'Health & Wellness', 'Education', 
     'Real Estate', 'Transportation', 'Entertainment', 'Professional Services', 'Retail', 'Other'
   ]
 
@@ -743,6 +744,7 @@ const IdeasVault = () => {
                     const isBookmarked = idea.bookmarked_by_user
                     const isLiked = idea.liked_by_user
                     const isLastItem = index === ideas.length - 1
+                    const isPaid = idea.price > 0
                     
                     return (
                       <div
@@ -792,7 +794,7 @@ const IdeasVault = () => {
                           </button>
                           
                           {/* Price overlay - if monetized */}
-                          {idea.price > 0 && (
+                          {isPaid && (
                             <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
                               <Lock className="h-3 w-3" />
                               <span>${idea.price}</span>
@@ -922,10 +924,10 @@ const IdeasVault = () => {
                                 <Share2 className="h-4 w-4" />
                               </button>
                               
-                              {/* Read More button */}
+                              {/* Read More button - Updated for paywall */}
                               <button 
                                 className={`flex items-center space-x-1 font-medium text-sm px-3 py-1 rounded-full transition-all ${
-                                  idea.price > 0 
+                                  isPaid 
                                     ? 'bg-green-500 text-white hover:bg-green-600' 
                                     : 'text-green-500 hover:text-green-600 hover:bg-green-50'
                                 }`}
@@ -934,10 +936,10 @@ const IdeasVault = () => {
                                   handleViewIdea(idea)
                                 }}
                               >
-                                {idea.price > 0 ? (
+                                {isPaid ? (
                                   <>
                                     <Lock className="h-3 w-3" />
-                                    <span>${idea.price}</span>
+                                    <span>Unlock for ${idea.price}</span>
                                   </>
                                 ) : (
                                   <span>Read More</span>
