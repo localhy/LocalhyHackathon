@@ -518,6 +518,84 @@ export const updateReferralJob = async (id: string, updates: Partial<ReferralJob
   return data
 }
 
+export const createReferralJobWithPayment = async (
+  jobData: Omit<ReferralJob, 'id' | 'created_at' | 'updated_at' | 'user_profiles' | 'applicants_count' | 'status'>,
+  userId: string
+): Promise<ReferralJob | null> => {
+  try {
+    // 1. Check if user has sufficient credits
+    const userProfile = await getUserProfile(userId)
+    if (!userProfile || (userProfile.credits || 0) < REFERRAL_JOB_POSTING_COST) {
+      console.error('Insufficient credits for referral job posting')
+      return null
+    }
+
+    // 2. Start a transaction by deducting credits first
+    const newCredits = (userProfile.credits || 0) - REFERRAL_JOB_POSTING_COST
+    const { error: creditError } = await supabase
+      .from('user_profiles')
+      .update({ credits: newCredits })
+      .eq('id', userId)
+
+    if (creditError) {
+      console.error('Error deducting credits:', creditError)
+      return null
+    }
+
+    // 3. Record the transaction
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        type: 'credit_usage',
+        amount: 0, // No fiat amount for credit usage
+        credits: REFERRAL_JOB_POSTING_COST,
+        description: `Referral job posting: ${jobData.title}`,
+        status: 'completed'
+      })
+
+    if (transactionError) {
+      console.error('Error recording transaction:', transactionError)
+      // Rollback credits if transaction recording fails
+      await supabase
+        .from('user_profiles')
+        .update({ credits: userProfile.credits })
+        .eq('id', userId)
+      return null
+    }
+
+    // 4. Create the referral job
+    const { data, error } = await supabase
+      .from('referral_jobs')
+      .insert({
+        ...jobData,
+        user_id: userId,
+        status: 'active',
+        applicants_count: 0
+      })
+      .select(`
+        *,
+        user_profiles!inner(name, avatar_url, user_type, bio)
+      `)
+      .single()
+
+    if (error) {
+      console.error('Error creating referral job:', error)
+      // Rollback credits and transaction if job creation fails
+      await supabase
+        .from('user_profiles')
+        .update({ credits: userProfile.credits })
+        .eq('id', userId)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in createReferralJobWithPayment:', error)
+    return null
+  }
+}
+
 // Tools Functions
 export const getTools = async (filters?: {
   category?: string
