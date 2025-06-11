@@ -496,6 +496,25 @@ export const getUserReferralJobs = async (userId: string): Promise<ReferralJob[]
   return data || []
 }
 
+export const updateReferralJob = async (id: string, updates: Partial<ReferralJob>): Promise<ReferralJob | null> => {
+  const { data, error } = await supabase
+    .from('referral_jobs')
+    .update(updates)
+    .eq('id', id)
+    .select(`
+      *,
+      user_profiles!inner(name, avatar_url, user_type, bio)
+    `)
+    .single()
+
+  if (error) {
+    console.error('Error updating referral job:', error)
+    return null
+  }
+
+  return data
+}
+
 // Tools Functions
 export const getTools = async (filters?: {
   category?: string
