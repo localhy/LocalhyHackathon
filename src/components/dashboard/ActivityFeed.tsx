@@ -25,7 +25,7 @@ interface ActivityItem {
   commission?: number
   commission_type?: string
   created_at: string
-  user_profiles?: {
+  user_profiles: {
     name: string
     avatar_url?: string
   }
@@ -82,7 +82,7 @@ const ActivityFeed: React.FC = () => {
           location: idea.location || undefined,
           price: idea.price,
           created_at: idea.created_at,
-          user_profiles: idea.user_profiles
+          user_profiles: idea.user_profiles ?? { name: 'Anonymous' }
         })),
         ...referralJobs.map(job => ({
           id: job.id,
@@ -95,7 +95,7 @@ const ActivityFeed: React.FC = () => {
           commission: job.commission,
           commission_type: job.commission_type,
           created_at: job.created_at,
-          user_profiles: job.user_profiles
+          user_profiles: job.user_profiles ?? { name: 'Business Owner' }
         })),
         ...tools.map(tool => ({
           id: tool.id,
@@ -106,7 +106,7 @@ const ActivityFeed: React.FC = () => {
           price: tool.price,
           views: tool.downloads_count,
           created_at: tool.created_at,
-          user_profiles: tool.user_profiles
+          user_profiles: tool.user_profiles ?? { name: 'Creator' }
         }))
       ]
 
@@ -275,7 +275,7 @@ const ActivityFeed: React.FC = () => {
                 
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <div className="flex items-center space-x-1">
-                    {activity.user_profiles?.avatar_url ? (
+                    {activity.user_profiles.avatar_url ? (
                       <img
                         src={activity.user_profiles.avatar_url}
                         alt={activity.author}
