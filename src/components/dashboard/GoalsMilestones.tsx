@@ -76,16 +76,16 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
         <h2 
-          className="text-lg sm:text-xl font-bold text-gray-900"
+          className="text-xl font-bold text-gray-900"
           style={{ fontFamily: 'Montserrat' }}
         >
           Goals & Milestones
         </h2>
         <span 
-          className="text-xs sm:text-sm text-gray-500"
+          className="text-sm text-gray-500"
           style={{ fontFamily: 'Inter' }}
         >
           {completedCount}/{milestones.length} completed
@@ -93,7 +93,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
       </div>
 
       {/* Progress Bar */}
-      <div className="mb-4 sm:mb-6">
+      <div className="mb-6">
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
             className="bg-green-500 h-2 rounded-full transition-all duration-300"
@@ -103,32 +103,32 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
       </div>
 
       {/* Milestones */}
-      <div className="space-y-2 sm:space-y-3">
+      <div className="space-y-3">
         {milestones.map((milestone) => (
           <div
             key={milestone.id}
             onClick={() => !milestone.completed && handleMilestoneClick(milestone.action)}
-            className={`flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg border transition-all duration-200 ${
+            className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${
               milestone.completed
                 ? 'bg-green-50 border-green-200'
                 : 'border-gray-200 hover:bg-gray-50 cursor-pointer hover:border-green-300'
             }`}
           >
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               milestone.completed
                 ? 'bg-green-500 text-white'
                 : 'bg-gray-100 text-gray-500'
             }`}>
               {milestone.completed ? (
-                <Check className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Check className="h-5 w-5" />
               ) : (
-                <milestone.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <milestone.icon className="h-5 w-5" />
               )}
             </div>
             
-            <div className="flex-1 min-w-0">
+            <div className="flex-1">
               <h3 
-                className={`font-medium text-sm sm:text-base ${
+                className={`font-medium ${
                   milestone.completed ? 'text-green-800' : 'text-gray-900'
                 }`}
                 style={{ fontFamily: 'Inter' }}
@@ -136,7 +136,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
                 {milestone.title}
               </h3>
               <p 
-                className={`text-xs sm:text-sm ${
+                className={`text-sm ${
                   milestone.completed ? 'text-green-600' : 'text-gray-500'
                 }`}
                 style={{ fontFamily: 'Inter' }}
@@ -146,8 +146,8 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
             </div>
 
             {milestone.completed && (
-              <div className="text-green-500 flex-shrink-0">
-                <Check className="h-4 w-4 sm:h-5 sm:w-5" />
+              <div className="text-green-500">
+                <Check className="h-5 w-5" />
               </div>
             )}
           </div>

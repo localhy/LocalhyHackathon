@@ -69,7 +69,7 @@ const Dashboard = () => {
       />
 
       {/* Main Content Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col">
         {/* Top Bar */}
         <TopBar 
           onMenuClick={toggleSidebar}
@@ -78,9 +78,9 @@ const Dashboard = () => {
 
         {/* Centered Main Content */}
         <div className="flex-1 flex justify-center">
-          <div className="w-full max-w-7xl px-3 sm:px-4 lg:px-8">
+          <div className="w-full max-w-7xl px-4 lg:px-8">
             {/* Main Dashboard Content */}
-            <main className="py-4 sm:py-6 space-y-4 sm:space-y-6">
+            <main className="py-6 space-y-6">
               {/* Welcome Block */}
               <WelcomeBlock user={user} />
 
