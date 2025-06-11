@@ -38,17 +38,17 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
   const firstName = user?.user_metadata?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
 
   return (
-    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div className="mb-4 lg:mb-0">
           <h1 
-            className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2"
+            className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2"
             style={{ fontFamily: 'Montserrat' }}
           >
             {isNewUser ? `Welcome, ${firstName}! 👋` : `Welcome back, ${firstName} 👋`}
           </h1>
           <p 
-            className="text-sm sm:text-base text-gray-600"
+            className="text-gray-600"
             style={{ fontFamily: 'Inter' }}
           >
             {isNewUser 
@@ -58,51 +58,51 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-green-50 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-1" />
-              <span className="text-xs sm:text-sm font-medium text-green-600" style={{ fontFamily: 'Inter' }}>
+              <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+              <span className="text-sm font-medium text-green-600" style={{ fontFamily: 'Inter' }}>
                 Credits
               </span>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
+            <p className="text-xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
               💰 {stats.credits}
             </p>
           </div>
 
-          <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 mr-1" />
-              <span className="text-xs sm:text-sm font-medium text-blue-600" style={{ fontFamily: 'Inter' }}>
+              <Eye className="h-4 w-4 text-blue-500 mr-1" />
+              <span className="text-sm font-medium text-blue-600" style={{ fontFamily: 'Inter' }}>
                 Views
               </span>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-blue-600" style={{ fontFamily: 'Montserrat' }}>
+            <p className="text-xl font-bold text-blue-600" style={{ fontFamily: 'Montserrat' }}>
               📈 {stats.views}
             </p>
           </div>
 
-          <div className="text-center p-2 sm:p-3 bg-purple-50 rounded-lg">
+          <div className="text-center p-3 bg-purple-50 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <Target className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500 mr-1" />
-              <span className="text-xs sm:text-sm font-medium text-purple-600" style={{ fontFamily: 'Inter' }}>
+              <Target className="h-4 w-4 text-purple-500 mr-1" />
+              <span className="text-sm font-medium text-purple-600" style={{ fontFamily: 'Inter' }}>
                 Referrals
               </span>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-purple-600" style={{ fontFamily: 'Montserrat' }}>
+            <p className="text-xl font-bold text-purple-600" style={{ fontFamily: 'Montserrat' }}>
               🎯 {stats.referrals}
             </p>
           </div>
 
-          <div className="text-center p-2 sm:p-3 bg-yellow-50 rounded-lg">
+          <div className="text-center p-3 bg-yellow-50 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <Share2 className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600 mr-1" />
-              <span className="text-xs sm:text-sm font-medium text-yellow-600" style={{ fontFamily: 'Inter' }}>
+              <Share2 className="h-4 w-4 text-yellow-600 mr-1" />
+              <span className="text-sm font-medium text-yellow-600" style={{ fontFamily: 'Inter' }}>
                 Tools
               </span>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-yellow-600" style={{ fontFamily: 'Montserrat' }}>
+            <p className="text-xl font-bold text-yellow-600" style={{ fontFamily: 'Montserrat' }}>
               🛠️ {stats.toolsShared}
             </p>
           </div>
