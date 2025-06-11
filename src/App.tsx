@@ -8,7 +8,6 @@ import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import UseCases from './components/UseCases';
 import Benefits from './components/Benefits';
-import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
@@ -34,7 +33,6 @@ const LandingPage = () => (
     <HowItWorks />
     <UseCases />
     <Benefits />
-    <Newsletter />
     <Footer />
   </div>
 );
