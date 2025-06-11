@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
 
+// Constants
+export const REFERRAL_JOB_POSTING_COST = 10
+
 // Types
 export interface UserProfile {
   id: string
