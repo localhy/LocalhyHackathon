@@ -9,6 +9,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// Constants
+export const REFERRAL_JOB_POSTING_COST = 10
+
 // Helper function to get the current user's ID
 export const getCurrentUserId = async () => {
   const { data } = await supabase.auth.getUser()
