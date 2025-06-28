@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { TrendingUp, Eye, Target, Share2 } from 'lucide-react'
-import { getUserCredits } from '../../lib/database'
+import { 
+  getUserCredits, 
+  getUserIdeas, 
+  getUserReferralJobs, 
+  getUserTools,
+  type Idea,
+  type ReferralJob,
+  type Tool
+} from '../../lib/database'
 
 interface WelcomeBlockProps {
   user: any
@@ -16,36 +24,61 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
   })
 
   const [isNewUser, setIsNewUser] = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  // In a real app, this would fetch from your database
   useEffect(() => {
     // Check if user is new (created within last 24 hours) or has any activity
-    const userCreatedAt = new Date(user?.created_at)
-    const now = new Date()
-    const hoursSinceCreation = (now.getTime() - userCreatedAt.getTime()) / (1000 * 60 * 60)
-    
-    // Consider user "new" if account is less than 24 hours old AND has no activity
-    const hasActivity = stats.views > 0 || stats.referrals > 0 || stats.toolsShared > 0
-    setIsNewUser(hoursSinceCreation < 24 && !hasActivity)
-
-    // Load user credits
     if (user) {
-      loadUserCredits()
+      const userCreatedAt = new Date(user?.created_at)
+      const now = new Date()
+      const hoursSinceCreation = (now.getTime() - userCreatedAt.getTime()) / (1000 * 60 * 60)
+      
+      // Load user data
+      loadUserData()
+      
+      // Consider user "new" if account is less than 24 hours old
+      setIsNewUser(hoursSinceCreation < 24)
     }
   }, [user])
 
-  const loadUserCredits = async () => {
+  const loadUserData = async () => {
     if (!user) return
     
     try {
-      const credits = await getUserCredits(user.id)
-      setStats(prev => ({
-        ...prev,
+      setLoading(true)
+      
+      // Fetch all user data in parallel
+      const [credits, ideas, referralJobs, tools] = await Promise.all([
+        getUserCredits(user.id),
+        getUserIdeas(user.id),
+        getUserReferralJobs(user.id),
+        getUserTools(user.id)
+      ])
+      
+      // Calculate total views from ideas
+      const totalViews = ideas.reduce((sum, idea) => sum + (idea.views || 0), 0)
+      
+      // Calculate total referrals (applicants) from referral jobs
+      const totalReferrals = referralJobs.reduce((sum, job) => sum + (job.applicants_count || 0), 0)
+      
+      // Update stats with real data
+      setStats({
         cashCredits: credits.cashCredits,
-        freeCredits: credits.freeCredits
-      }))
+        freeCredits: credits.freeCredits,
+        views: totalViews,
+        referrals: totalReferrals,
+        toolsShared: tools.length
+      })
+      
+      // Update new user status based on activity
+      const hasActivity = totalViews > 0 || totalReferrals > 0 || tools.length > 0
+      if (hasActivity) {
+        setIsNewUser(false)
+      }
     } catch (error) {
-      console.error('Error loading user credits:', error)
+      console.error('Error loading user data:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
