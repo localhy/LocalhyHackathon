@@ -5,6 +5,7 @@ import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
 import { getUserProfile, updateUserProfile, uploadAvatar } from '../lib/database'
+import { supabase } from '../lib/supabase'
 
 const Profile = () => {
   const navigate = useNavigate()
@@ -204,12 +205,24 @@ const Profile = () => {
         // Update local state immediately for preview
         setProfileData(prev => ({ ...prev, avatarUrl }))
         
-        // Auto-save the avatar URL to database
+        // Update the user_profiles table
         const updatedProfile = await updateUserProfile(user.id, {
           avatar_url: avatarUrl
         })
 
         if (updatedProfile) {
+          // Also update the user metadata in Supabase Auth
+          const { error: authUpdateError } = await supabase.auth.updateUser({
+            data: {
+              avatar_url: avatarUrl
+            }
+          })
+
+          if (authUpdateError) {
+            console.error('Error updating auth user metadata:', authUpdateError)
+            // Don't throw here as the main operation succeeded
+          }
+
           setSuccess('Avatar uploaded successfully!')
           
           // Refresh user data to sync everywhere
