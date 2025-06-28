@@ -1402,7 +1402,7 @@ const BusinessPageForm = () => {
         <div className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
           <div className="max-w-4xl mx-auto flex items-center space-x-4">
             <button
-              onClick={() => navigate('/dashboard/profile')}
+              onClick={() => navigate('/dashboard/business-pages')}
               className="text-gray-500 hover:text-gray-700"
             >
               <ArrowLeft className="h-5 w-5" />
