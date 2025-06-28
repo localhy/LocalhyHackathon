@@ -255,6 +255,17 @@ export interface CreateMessageData {
   subject?: string
 }
 
+export interface CreatePromotionAdData {
+  user_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
+  promotion_type: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
+  cost_credits: number
+  start_date: string
+  end_date: string
+  metadata?: any
+}
+
 // Constants
 export const REFERRAL_JOB_POSTING_COST = 10 // Credits required to post a referral job
 
@@ -1115,4 +1126,36 @@ export const incrementPromotionClicks = async (promotionId: string): Promise<boo
   }
 
   return true
+}
+
+export const createPromotionAd = async (promotionData: CreatePromotionAdData): Promise<Promotion | null> => {
+  // Check if user has enough credits
+  const { data: userProfile } = await supabase
+    .from('user_profiles')
+    .select('credits')
+    .eq('id', promotionData.user_id)
+    .single()
+
+  if (!userProfile || (userProfile.credits || 0) < promotionData.cost_credits) {
+    throw new Error('Insufficient credits to create promotion')
+  }
+
+  // Create the promotion and deduct credits in a transaction
+  const { data, error } = await supabase.rpc('create_promotion_with_payment', {
+    p_user_id: promotionData.user_id,
+    p_content_id: promotionData.content_id,
+    p_content_type: promotionData.content_type,
+    p_promotion_type: promotionData.promotion_type,
+    p_cost_credits: promotionData.cost_credits,
+    p_start_date: promotionData.start_date,
+    p_end_date: promotionData.end_date,
+    p_metadata: promotionData.metadata || {}
+  })
+
+  if (error) {
+    console.error('Error creating promotion:', error)
+    throw new Error(error.message)
+  }
+
+  return data
 }
