@@ -344,7 +344,6 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
   const [commentModalOpen, setCommentModalOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState('')
   const [timeFilter, setTimeFilter] = useState('all')
-  const [successMessage, setSuccessMessage] = useState('') // Added success message state
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
@@ -430,18 +429,13 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
       })
       
       if (newPost) {
-        // Add the new post to the state immediately
-        setPosts(prevPosts => [newPost, ...prevPosts])
-        
         // Clear form
         setNewPostContent('')
         setNewPostLocation('')
         setNewPostImage(null)
         setNewPostVideo(null)
         
-        // Show success message
-        setSuccessMessage('Post created successfully!')
-        setTimeout(() => setSuccessMessage(''), 3000)
+        // Post will be added via real-time subscription
       } else {
         throw new Error('Failed to create post')
       }
@@ -567,12 +561,6 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
                     {error && (
                       <div className="mt-2 text-red-600 text-sm">
                         {error}
-                      </div>
-                    )}
-                    
-                    {successMessage && (
-                      <div className="mt-2 text-green-600 text-sm">
-                        {successMessage}
                       </div>
                     )}
                     
