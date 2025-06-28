@@ -1147,6 +1147,21 @@ export const getActivePromotionForContent = async (contentId: string, contentTyp
   return data
 }
 
+export const getUserPromotions = async (userId: string): Promise<Promotion[]> => {
+  const { data, error } = await supabase
+    .from('promotions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user promotions:', error)
+    return []
+  }
+
+  return data || []
+}
+
 export const incrementPromotionClicks = async (promotionId: string): Promise<boolean> => {
   const { error } = await supabase.rpc('increment_promotion_clicks', {
     p_promotion_id: promotionId
