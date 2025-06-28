@@ -13,6 +13,7 @@ export interface UserProfile {
   updated_at: string
   credits?: number
   fiat_balance?: number
+  paypal_email?: string
   // Contact and social media fields
   phone?: string
   website?: string
@@ -151,6 +152,8 @@ export interface Transaction {
   status: 'pending' | 'completed' | 'failed' | 'cancelled'
   payment_method?: string
   payment_id?: string
+  withdrawal_method?: string
+  withdrawal_details?: any
   metadata?: any
   created_at: string
   updated_at: string
@@ -339,6 +342,20 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
   }
 
   return data
+}
+
+export const updateUserPayPalEmail = async (userId: string, paypalEmail: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({ paypal_email: paypalEmail })
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Error updating PayPal email:', error)
+    return false
+  }
+
+  return true
 }
 
 // Ideas Functions
@@ -1230,55 +1247,34 @@ export const transferCreditsToFiatBalance = async (userId: string, credits: numb
 
 export const processWithdrawal = async (userId: string, amount: number): Promise<boolean> => {
   try {
-    // Check if user has enough fiat balance
+    // Get user profile to check balance and PayPal email
     const { data: userProfile } = await supabase
       .from('user_profiles')
-      .select('fiat_balance')
+      .select('fiat_balance, paypal_email')
       .eq('id', userId)
       .single()
 
-    if (!userProfile || Number(userProfile.fiat_balance || 0) < amount) {
+    if (!userProfile) {
+      throw new Error('User profile not found')
+    }
+
+    if (!userProfile.paypal_email) {
+      throw new Error('PayPal email not set. Please add your PayPal email in withdrawal settings.')
+    }
+
+    if (Number(userProfile.fiat_balance || 0) < amount) {
       throw new Error('Insufficient balance for withdrawal')
     }
 
-    // Calculate fee (15%)
-    const fee = amount * 0.15
-    const netAmount = amount - fee
-    const newFiatBalance = Number(userProfile.fiat_balance || 0) - amount
+    // Use the database function to process withdrawal with PayPal details
+    const { data, error } = await supabase.rpc('process_withdrawal_with_paypal', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_paypal_email: userProfile.paypal_email
+    })
 
-    // Update user profile
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        fiat_balance: newFiatBalance
-      })
-      .eq('id', userId)
-
-    if (updateError) {
-      throw new Error(updateError.message)
-    }
-
-    // Create transaction record
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        type: 'withdrawal',
-        amount: amount,
-        credits: 0,
-        currency: 'USD',
-        description: `Withdrawal request for $${amount.toFixed(2)} (net: $${netAmount.toFixed(2)} after 15% fee)`,
-        status: 'pending',
-        metadata: {
-          gross_amount: amount,
-          fee_amount: fee,
-          net_amount: netAmount
-        }
-      })
-
-    if (transactionError) {
-      console.error('Error creating transaction record:', transactionError)
-      // Don't throw here as the main operation succeeded
+    if (error) {
+      throw new Error(error.message)
     }
 
     return true
