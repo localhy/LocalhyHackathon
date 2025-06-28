@@ -269,6 +269,38 @@ export interface CreatePromotionAdData {
 // Constants
 export const REFERRAL_JOB_POSTING_COST = 10 // Credits required to post a referral job
 
+// Promotion pricing function
+export const getPromotionPricing = (
+  contentType: 'idea' | 'referral_job' | 'tool',
+  promotionType: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
+): number => {
+  // Define pricing based on promotion type and content type
+  const pricingMatrix = {
+    featured_homepage: {
+      idea: 50,
+      referral_job: 75,
+      tool: 60
+    },
+    boosted_search: {
+      idea: 25,
+      referral_job: 35,
+      tool: 30
+    },
+    category_spotlight: {
+      idea: 40,
+      referral_job: 50,
+      tool: 45
+    },
+    premium_placement: {
+      idea: 80,
+      referral_job: 100,
+      tool: 90
+    }
+  }
+
+  return pricingMatrix[promotionType][contentType] || 0
+}
+
 // User Profile Functions
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const { data, error } = await supabase
