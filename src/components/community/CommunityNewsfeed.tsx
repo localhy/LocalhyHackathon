@@ -429,13 +429,23 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
       })
       
       if (newPost) {
+        // Add the new post to the state immediately for better UX
+        const enhancedPost: CommunityPost = {
+          ...newPost,
+          user_name: user.user_metadata?.name || 'Anonymous',
+          user_avatar_url: user.user_metadata?.avatar_url,
+          user_type: user.user_metadata?.user_type,
+          liked_by_user: false
+        }
+        
+        // Add the new post to the top of the list
+        setPosts(prev => [enhancedPost, ...prev])
+        
         // Clear form
         setNewPostContent('')
         setNewPostLocation('')
         setNewPostImage(null)
         setNewPostVideo(null)
-        
-        // Post will be added via real-time subscription
       } else {
         throw new Error('Failed to create post')
       }
