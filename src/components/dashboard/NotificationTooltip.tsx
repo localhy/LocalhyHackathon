@@ -26,20 +26,26 @@ const NotificationTooltip: React.FC<NotificationTooltipProps> = ({ isOpen, onClo
       // Set up real-time subscription
       const subscription = subscribeToUserNotifications(user.id, (payload) => {
         if (payload.eventType === 'INSERT') {
-          // Add new notification to the top of the list
-          setNotifications(prev => [payload.new, ...prev].slice(0, 5)) // Keep only latest 5
+          // Validate payload.new before adding to notifications
+          if (payload.new && payload.new.id && payload.new.title && payload.new.message) {
+            setNotifications(prev => [payload.new, ...prev].slice(0, 5)) // Keep only latest 5
+          }
         } else if (payload.eventType === 'UPDATE') {
-          // Update existing notification
-          setNotifications(prev => 
-            prev.map(notif => 
-              notif.id === payload.new.id ? payload.new : notif
+          // Validate payload.new before updating notifications
+          if (payload.new && payload.new.id) {
+            setNotifications(prev => 
+              prev.map(notif => 
+                notif.id === payload.new.id ? payload.new : notif
+              )
             )
-          )
+          }
         } else if (payload.eventType === 'DELETE') {
-          // Remove deleted notification
-          setNotifications(prev => 
-            prev.filter(notif => notif.id !== payload.old.id)
-          )
+          // Validate payload.old before removing notification
+          if (payload.old && payload.old.id) {
+            setNotifications(prev => 
+              prev.filter(notif => notif.id !== payload.old.id)
+            )
+          }
         }
       })
 
