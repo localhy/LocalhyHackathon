@@ -830,40 +830,79 @@ const Wallet = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div className="border border-gray-200 hover:border-green-300 rounded-lg p-4 text-center cursor-pointer transition-colors">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">10 Credits</h3>
-                      <p className="text-green-600 font-semibold mb-3">$10.00</p>
-                      <button className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium">
-                        Buy Now
-                      </button>
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">20 Credits</h3>
+                      <p className="text-green-600 font-semibold mb-3">$20.00</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => {
+                            // Space for PayPal URL
+                          }}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                        >
+                          Buy with PayPal
+                        </button>
+                        <button 
+                          onClick={() => {
+                            // Space for Creem.io URL
+                          }}
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                        >
+                          Pay with Card
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="border border-gray-200 hover:border-green-300 rounded-lg p-4 text-center cursor-pointer transition-colors">
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">50 Credits</h3>
+                      <p className="text-green-600 font-semibold mb-3">$45.00</p>
+                      <p className="text-xs text-gray-500 mb-3">Save $5.00</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => {
+                            // Space for PayPal URL
+                          }}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                        >
+                          Buy with PayPal
+                        </button>
+                        <button 
+                          onClick={() => {
+                            // Space for Creem.io URL
+                          }}
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                        >
+                          Pay with Card
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="border-2 border-green-500 rounded-lg p-4 text-center cursor-pointer relative">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                         POPULAR
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">50 Credits</h3>
-                      <p className="text-green-600 font-semibold mb-3">$45.00</p>
-                      <p className="text-xs text-gray-500 mb-3">Save $5.00</p>
-                      <button className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium">
-                        Buy Now
-                      </button>
-                    </div>
-                    
-                    <div className="border border-gray-200 hover:border-green-300 rounded-lg p-4 text-center cursor-pointer transition-colors">
                       <h3 className="text-xl font-bold text-gray-900 mb-1">100 Credits</h3>
                       <p className="text-green-600 font-semibold mb-3">$85.00</p>
-                      <p className="text-xs text-gray-500 mb-3">Save $15.00</p>
-                      <button className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium">
-                        Buy Now
-                      </button>
+                      <p className="text-xs text-gray-500 mb-1">Save $15.00</p>
+                      <p className="text-xs text-yellow-700 mb-3">Get an additional 200 FREE credits!</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => {
+                            // Space for PayPal URL
+                          }}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                        >
+                          Buy with PayPal
+                        </button>
+                        <button 
+                          onClick={() => {
+                            // Space for Creem.io URL
+                          }}
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                        >
+                          Pay with Card
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="bg-yellow-50 p-4 rounded-lg mb-6">
-                    <h3 className="font-medium text-yellow-800 mb-2">Coming Soon</h3>
-                    <p className="text-yellow-700 text-sm">
-                      Credit purchasing functionality is coming soon. For now, this is a preview of the interface.
-                    </p>
                   </div>
                 </div>
               </div>
