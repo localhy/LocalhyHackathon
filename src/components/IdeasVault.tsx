@@ -190,7 +190,7 @@ const IdeasVault = () => {
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [selectedLocation, setSelectedLocation] = useState('')
+  const [locationSearchQuery, setLocationSearchQuery] = useState('')
   const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid'>('all')
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'trending'>('newest')
   const [showFilters, setShowFilters] = useState(false)
@@ -223,23 +223,9 @@ const IdeasVault = () => {
     'Real Estate', 'Transportation', 'Entertainment', 'Professional Services', 'Retail', 'Other'
   ]
 
-  // Location options - cities and states for better UX
-  const locations = [
-    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ',
-    'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',
-    'Austin, TX', 'Jacksonville, FL', 'Fort Worth, TX', 'Columbus, OH', 'Charlotte, NC',
-    'San Francisco, CA', 'Indianapolis, IN', 'Seattle, WA', 'Denver, CO', 'Washington, DC',
-    'Boston, MA', 'El Paso, TX', 'Nashville, TN', 'Detroit, MI', 'Oklahoma City, OK',
-    'Portland, OR', 'Las Vegas, NV', 'Memphis, TN', 'Louisville, KY', 'Baltimore, MD',
-    'Milwaukee, WI', 'Albuquerque, NM', 'Tucson, AZ', 'Fresno, CA', 'Sacramento, CA',
-    'Mesa, AZ', 'Kansas City, MO', 'Atlanta, GA', 'Long Beach, CA', 'Colorado Springs, CO',
-    'Raleigh, NC', 'Miami, FL', 'Virginia Beach, VA', 'Omaha, NE', 'Oakland, CA',
-    'Minneapolis, MN', 'Tulsa, OK', 'Arlington, TX', 'Tampa, FL', 'New Orleans, LA'
-  ].sort()
-
   useEffect(() => {
     loadIdeas(true)
-  }, [searchQuery, selectedCategory, selectedLocation, priceFilter, sortBy])
+  }, [searchQuery, selectedCategory, locationSearchQuery, priceFilter, sortBy])
 
   const loadIdeas = async (reset = false) => {
     try {
@@ -272,9 +258,9 @@ const IdeasVault = () => {
         fetchedIdeas = fetchedIdeas.filter(idea => idea.category === selectedCategory)
       }
 
-      if (selectedLocation) {
+      if (locationSearchQuery) {
         fetchedIdeas = fetchedIdeas.filter(idea => 
-          idea.location && idea.location.toLowerCase().includes(selectedLocation.toLowerCase())
+          idea.location && idea.location.toLowerCase().includes(locationSearchQuery.toLowerCase())
         )
       }
       
@@ -345,20 +331,20 @@ const IdeasVault = () => {
       case 'referral-jobs':
         navigate('/dashboard/referral-jobs')
         break
+      case 'business-pages':
+        navigate('/dashboard/business-pages')
+        break
+      case 'community':
+        navigate('/dashboard/community')
+        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break
       case 'create-new':
         navigate('/dashboard/create-new?tab=idea')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')
@@ -494,7 +480,7 @@ const IdeasVault = () => {
   const clearFilters = () => {
     setSearchQuery('')
     setSelectedCategory('')
-    setSelectedLocation('')
+    setLocationSearchQuery('')
     setPriceFilter('all')
     setSortBy('newest')
   }
@@ -502,7 +488,7 @@ const IdeasVault = () => {
   const activeFiltersCount = [
     searchQuery,
     selectedCategory,
-    selectedLocation,
+    locationSearchQuery,
     priceFilter !== 'all' ? priceFilter : '',
     sortBy !== 'newest' ? sortBy : ''
   ].filter(Boolean).length
@@ -533,7 +519,6 @@ const IdeasVault = () => {
       <div className="min-h-screen bg-gray-50 flex">
         <Sidebar 
           isOpen={sidebarOpen}
-          currentPage="ideas-vault"
           onNavigate={handleNavigation}
           onClose={() => setSidebarOpen(false)}
         />
@@ -576,7 +561,6 @@ const IdeasVault = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
         isOpen={sidebarOpen}
-        currentPage="ideas-vault"
         onNavigate={handleNavigation}
         onClose={() => setSidebarOpen(false)}
       />
@@ -665,16 +649,16 @@ const IdeasVault = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  >
-                    <option value="">All Locations</option>
-                    {locations.map(location => (
-                      <option key={location} value={location}>{location}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={locationSearchQuery}
+                      onChange={(e) => setLocationSearchQuery(e.target.value)}
+                      placeholder="Search any location..."
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -723,7 +707,7 @@ const IdeasVault = () => {
           <div className="max-w-6xl mx-auto">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
                   onClick={() => loadIdeas(true)}
                   className="mt-2 text-red-600 hover:text-red-700 font-medium text-sm"
@@ -742,7 +726,7 @@ const IdeasVault = () => {
                   className="text-xl font-semibold text-gray-900 mb-2"
                   style={{ fontFamily: 'Montserrat' }}
                 >
-                  {searchQuery || selectedCategory || selectedLocation || priceFilter !== 'all' 
+                  {searchQuery || selectedCategory || locationSearchQuery || priceFilter !== 'all' 
                     ? 'No ideas match your filters' 
                     : 'No ideas yet'
                   }
@@ -751,7 +735,7 @@ const IdeasVault = () => {
                   className="text-gray-600 mb-6"
                   style={{ fontFamily: 'Inter' }}
                 >
-                  {searchQuery || selectedCategory || selectedLocation || priceFilter !== 'all'
+                  {searchQuery || selectedCategory || locationSearchQuery || priceFilter !== 'all'
                     ? 'Try adjusting your search criteria or filters.'
                     : 'Be the first to share a local business idea and start earning!'
                   }
@@ -764,7 +748,7 @@ const IdeasVault = () => {
                   >
                     Post Your First Idea
                   </button>
-                  {(searchQuery || selectedCategory || selectedLocation || priceFilter !== 'all') && (
+                  {(searchQuery || selectedCategory || locationSearchQuery || priceFilter !== 'all') && (
                     <button
                       onClick={clearFilters}
                       className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50"

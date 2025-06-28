@@ -13,14 +13,12 @@ const Dashboard = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [currentPage, setCurrentPage] = useState('dashboard')
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
   }
 
   const handleNavigation = (page: string) => {
-    setCurrentPage(page)
     setSidebarOpen(false) // Close sidebar on mobile after navigation
     
     // Navigate to specific pages
@@ -69,7 +67,6 @@ const Dashboard = () => {
       {/* Sidebar */}
       <Sidebar 
         isOpen={sidebarOpen}
-        currentPage={currentPage}
         onNavigate={handleNavigation}
         onClose={() => setSidebarOpen(false)}
       />

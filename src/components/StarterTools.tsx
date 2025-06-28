@@ -45,20 +45,20 @@ const StarterTools = () => {
       case 'referral-jobs':
         navigate('/dashboard/referral-jobs')
         break
+      case 'business-pages':
+        navigate('/dashboard/business-pages')
+        break
+      case 'community':
+        navigate('/dashboard/community')
+        break
       case 'starter-tools':
         // Stay on current page
         break
       case 'create-new':
         navigate('/dashboard/create-new')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')
@@ -139,7 +139,6 @@ const StarterTools = () => {
       <div className="min-h-screen bg-gray-50 flex">
         <Sidebar 
           isOpen={sidebarOpen}
-          currentPage="starter-tools"
           onNavigate={handleNavigation}
           onClose={() => setSidebarOpen(false)}
         />
@@ -179,7 +178,6 @@ const StarterTools = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
         isOpen={sidebarOpen}
-        currentPage="starter-tools"
         onNavigate={handleNavigation}
         onClose={() => setSidebarOpen(false)}
       />
