@@ -77,7 +77,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       loadUserActivity()
       setupRealtimeSubscriptions()
     }
@@ -89,7 +89,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
   }, [user, userActivity])
 
   const loadUserActivity = async () => {
-    if (!user) return
+    if (!user || !user.id) return
 
     try {
       setLoading(true)
@@ -114,125 +114,137 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
   }
 
   const setupRealtimeSubscriptions = () => {
-    if (!user) return
+    // Robust validation of user object and ID
+    if (!user || !user.id || typeof user.id !== 'string' || user.id.trim() === '') {
+      console.warn('Cannot set up real-time subscriptions: invalid user or user ID')
+      return
+    }
 
-    // Subscribe to user profile changes
-    const profileSubscription = subscribeToUserProfile(user.id, (payload) => {
-      console.log('Profile updated:', payload)
-      // Profile changes will trigger milestone recalculation via user prop changes
-    })
+    try {
+      // Subscribe to user profile changes
+      const profileSubscription = subscribeToUserProfile(user.id, (payload) => {
+        console.log('Profile updated:', payload)
+        // Profile changes will trigger milestone recalculation via user prop changes
+      })
 
-    // Subscribe to ideas table changes for this user
-    const ideasSubscription = supabase
-      .channel('user-ideas')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ideas',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Ideas updated:', payload)
-          if (payload.eventType === 'INSERT') {
-            setUserActivity(prev => ({
-              ...prev,
-              ideas: [payload.new as Idea, ...prev.ideas]
-            }))
-          } else if (payload.eventType === 'DELETE') {
-            setUserActivity(prev => ({
-              ...prev,
-              ideas: prev.ideas.filter(idea => idea.id !== payload.old.id)
-            }))
-          } else if (payload.eventType === 'UPDATE') {
-            setUserActivity(prev => ({
-              ...prev,
-              ideas: prev.ideas.map(idea => 
-                idea.id === payload.new.id ? payload.new as Idea : idea
-              )
-            }))
+      // Subscribe to ideas table changes for this user
+      const ideasSubscription = supabase
+        .channel('user-ideas')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'ideas',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Ideas updated:', payload)
+            if (payload.eventType === 'INSERT') {
+              setUserActivity(prev => ({
+                ...prev,
+                ideas: [payload.new as Idea, ...prev.ideas]
+              }))
+            } else if (payload.eventType === 'DELETE') {
+              setUserActivity(prev => ({
+                ...prev,
+                ideas: prev.ideas.filter(idea => idea.id !== payload.old.id)
+              }))
+            } else if (payload.eventType === 'UPDATE') {
+              setUserActivity(prev => ({
+                ...prev,
+                ideas: prev.ideas.map(idea => 
+                  idea.id === payload.new.id ? payload.new as Idea : idea
+                )
+              }))
+            }
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
 
-    // Subscribe to referral_jobs table changes for this user
-    const referralJobsSubscription = supabase
-      .channel('user-referral-jobs')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'referral_jobs',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Referral jobs updated:', payload)
-          if (payload.eventType === 'INSERT') {
-            setUserActivity(prev => ({
-              ...prev,
-              referralJobs: [payload.new as ReferralJob, ...prev.referralJobs]
-            }))
-          } else if (payload.eventType === 'DELETE') {
-            setUserActivity(prev => ({
-              ...prev,
-              referralJobs: prev.referralJobs.filter(job => job.id !== payload.old.id)
-            }))
-          } else if (payload.eventType === 'UPDATE') {
-            setUserActivity(prev => ({
-              ...prev,
-              referralJobs: prev.referralJobs.map(job => 
-                job.id === payload.new.id ? payload.new as ReferralJob : job
-              )
-            }))
+      // Subscribe to referral_jobs table changes for this user
+      const referralJobsSubscription = supabase
+        .channel('user-referral-jobs')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'referral_jobs',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Referral jobs updated:', payload)
+            if (payload.eventType === 'INSERT') {
+              setUserActivity(prev => ({
+                ...prev,
+                referralJobs: [payload.new as ReferralJob, ...prev.referralJobs]
+              }))
+            } else if (payload.eventType === 'DELETE') {
+              setUserActivity(prev => ({
+                ...prev,
+                referralJobs: prev.referralJobs.filter(job => job.id !== payload.old.id)
+              }))
+            } else if (payload.eventType === 'UPDATE') {
+              setUserActivity(prev => ({
+                ...prev,
+                referralJobs: prev.referralJobs.map(job => 
+                  job.id === payload.new.id ? payload.new as ReferralJob : job
+                )
+              }))
+            }
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
 
-    // Subscribe to tools table changes for this user
-    const toolsSubscription = supabase
-      .channel('user-tools')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tools',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Tools updated:', payload)
-          if (payload.eventType === 'INSERT') {
-            setUserActivity(prev => ({
-              ...prev,
-              tools: [payload.new as Tool, ...prev.tools]
-            }))
-          } else if (payload.eventType === 'DELETE') {
-            setUserActivity(prev => ({
-              ...prev,
-              tools: prev.tools.filter(tool => tool.id !== payload.old.id)
-            }))
-          } else if (payload.eventType === 'UPDATE') {
-            setUserActivity(prev => ({
-              ...prev,
-              tools: prev.tools.map(tool => 
-                tool.id === payload.new.id ? payload.new as Tool : tool
-              )
-            }))
+      // Subscribe to tools table changes for this user
+      const toolsSubscription = supabase
+        .channel('user-tools')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tools',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Tools updated:', payload)
+            if (payload.eventType === 'INSERT') {
+              setUserActivity(prev => ({
+                ...prev,
+                tools: [payload.new as Tool, ...prev.tools]
+              }))
+            } else if (payload.eventType === 'DELETE') {
+              setUserActivity(prev => ({
+                ...prev,
+                tools: prev.tools.filter(tool => tool.id !== payload.old.id)
+              }))
+            } else if (payload.eventType === 'UPDATE') {
+              setUserActivity(prev => ({
+                ...prev,
+                tools: prev.tools.map(tool => 
+                  tool.id === payload.new.id ? payload.new as Tool : tool
+                )
+              }))
+            }
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
 
-    // Cleanup subscriptions on unmount
-    return () => {
-      profileSubscription.unsubscribe()
-      ideasSubscription.unsubscribe()
-      referralJobsSubscription.unsubscribe()
-      toolsSubscription.unsubscribe()
+      // Cleanup subscriptions on unmount
+      return () => {
+        try {
+          profileSubscription?.unsubscribe()
+          ideasSubscription?.unsubscribe()
+          referralJobsSubscription?.unsubscribe()
+          toolsSubscription?.unsubscribe()
+        } catch (error) {
+          console.error('Error cleaning up subscriptions:', error)
+        }
+      }
+    } catch (error) {
+      console.error('Error setting up real-time subscriptions:', error)
     }
   }
 
