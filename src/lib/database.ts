@@ -167,6 +167,24 @@ export interface Promotion {
   updated_at: string
 }
 
+export interface Transaction {
+  id: string
+  user_id: string
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion' | 'credit_transfer_sent' | 'credit_transfer_received'
+  amount: number
+  credits: number
+  currency: string
+  description: string
+  status: 'pending' | 'completed' | 'failed' | 'cancelled'
+  payment_method?: string
+  payment_id?: string
+  metadata?: any
+  created_at: string
+  updated_at: string
+  withdrawal_method?: string
+  withdrawal_details?: any
+}
+
 export interface BusinessProfile {
   id: string
   user_id: string
@@ -340,6 +358,22 @@ export const getUserCredits = async (userId: string): Promise<{ cashCredits: num
     cashCredits: data.credits || 0,
     freeCredits: data.free_credits || 0
   }
+}
+
+// Transaction Functions
+export const getUserTransactions = async (userId: string): Promise<Transaction[]> => {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user transactions:', error)
+    return []
+  }
+
+  return data
 }
 
 // Ideas Functions
