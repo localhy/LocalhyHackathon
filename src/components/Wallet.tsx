@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 
 // Credit package options
 const CREDIT_PACKAGES = [
-  { credits: 10, price: 10, popular: false },
+  { credits: 20, price: 20, popular: false },
   { credits: 50, price: 50, popular: false },
   { credits: 100, price: 100, popular: true, bonus: 200 },
   { credits: 500, price: 500, popular: false }
