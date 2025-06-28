@@ -18,7 +18,10 @@ import {
   Filter,
   Search,
   AlertCircle,
-  Loader
+  Loader,
+  ArrowRight,
+  Eye,
+  Target
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -97,6 +100,12 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   
+  // Right column data
+  const [recentIdeas, setRecentIdeas] = useState<Idea[]>([])
+  const [topReferralJobs, setTopReferralJobs] = useState<ReferralJob[]>([])
+  const [featuredTools, setFeaturedTools] = useState<Tool[]>([])
+  const [loadingRightColumn, setLoadingRightColumn] = useState(true)
+  
   // Ads
   const promotionAds: PromotionAd[] = [
     {
@@ -130,6 +139,7 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
 
   useEffect(() => {
     loadFeedItems()
+    loadRightColumnData()
   }, [user, searchQuery, selectedLocation, selectedTimeframe, selectedContentType])
 
   const loadFeedItems = async (loadMore = false) => {
@@ -315,6 +325,28 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
     } finally {
       setLoading(false)
       setLoadingMore(false)
+    }
+  }
+
+  const loadRightColumnData = async () => {
+    try {
+      setLoadingRightColumn(true)
+      
+      // Fetch recent ideas (limit to 3)
+      const ideas = await getIdeas(3, 0, user?.id)
+      setRecentIdeas(ideas)
+      
+      // Fetch top referral jobs (limit to 3)
+      const referralJobs = await getReferralJobs(3, 0, user?.id)
+      setTopReferralJobs(referralJobs)
+      
+      // Fetch featured tools (limit to 3)
+      const tools = await getTools(3, 0)
+      setFeaturedTools(tools)
+    } catch (err) {
+      console.error('Error loading right column data:', err)
+    } finally {
+      setLoadingRightColumn(false)
     }
   }
 
@@ -712,420 +744,673 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="max-w-2xl mx-auto p-4">
-        {/* Create Post */}
-        <div className="bg-white rounded-lg shadow mb-6 p-4">
-          <div className="flex space-x-3">
-            {user?.user_metadata?.avatar_url ? (
-              <img 
-                src={user.user_metadata.avatar_url} 
-                alt="Profile" 
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
-              </div>
-            )}
-            <div className="flex-1">
-              <textarea
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                placeholder="What's happening in your neighborhood?"
-                className="w-full border border-gray-300 rounded-lg p-3 mb-2 focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
-                rows={3}
-              />
-              
-              {imagePreview && (
-                <div className="relative mb-3">
+      <div className="max-w-6xl mx-auto p-4">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Column - Newsfeed */}
+          <div className="lg:w-2/3">
+            {/* Create Post */}
+            <div className="bg-white rounded-lg shadow mb-6 p-4">
+              <div className="flex space-x-3">
+                {user?.user_metadata?.avatar_url ? (
                   <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="max-h-40 rounded-lg object-cover"
+                    src={user.user_metadata.avatar_url} 
+                    alt="Profile" 
+                    className="w-10 h-10 rounded-full object-cover"
                   />
-                  <button
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 bg-gray-800 text-white p-1 rounded-full hover:bg-gray-700"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-              
-              {postError && (
-                <div className="text-red-500 text-sm mb-2">{postError}</div>
-              )}
-              
-              <div className="flex justify-between items-center">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
-                    title="Add Image"
-                  >
-                    <Image className="h-5 w-5" />
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageSelect}
-                    accept="image/*"
-                    className="hidden"
+                ) : (
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <textarea
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    placeholder="What's happening in your neighborhood?"
+                    className="w-full border border-gray-300 rounded-lg p-3 mb-2 focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                    rows={3}
                   />
                   
-                  <button
-                    className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
-                    title="Add Location"
-                  >
-                    <MapPin className="h-5 w-5" />
-                  </button>
-                </div>
-                
-                <button
-                  onClick={handlePostSubmit}
-                  disabled={postingContent || (!newPostContent.trim() && !selectedImage)}
-                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
-                >
-                  {postingContent ? (
-                    <>
-                      <Loader className="h-4 w-4 animate-spin" />
-                      <span>Posting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      <span>Post</span>
-                    </>
+                  {imagePreview && (
+                    <div className="relative mb-3">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="max-h-40 rounded-lg object-cover"
+                      />
+                      <button
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 bg-gray-800 text-white p-1 rounded-full hover:bg-gray-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                   )}
-                </button>
+                  
+                  {postError && (
+                    <div className="text-red-500 text-sm mb-2">{postError}</div>
+                  )}
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+                        title="Add Image"
+                      >
+                        <Image className="h-5 w-5" />
+                      </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageSelect}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      
+                      <button
+                        className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+                        title="Add Location"
+                      >
+                        <MapPin className="h-5 w-5" />
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={handlePostSubmit}
+                      disabled={postingContent || (!newPostContent.trim() && !selectedImage)}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+                    >
+                      {postingContent ? (
+                        <>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          <span>Posting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          <span>Post</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow mb-6 p-4">
-          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search posts..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              />
             </div>
             
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <Filter className="h-4 w-4 text-gray-500" />
-              <span>Filters</span>
-              <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-          
-          {showFilters && (
-            <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            {/* Filters */}
+            <div className="bg-white rounded-lg shadow mb-6 p-4">
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search posts..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  <option value="">All Locations</option>
-                  <option value="New York">New York</option>
-                  <option value="Los Angeles">Los Angeles</option>
-                  <option value="Chicago">Chicago</option>
-                  <option value="Houston">Houston</option>
-                  <option value="Phoenix">Phoenix</option>
-                </select>
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <span>Filters</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                </button>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timeframe</label>
-                <select
-                  value={selectedTimeframe}
-                  onChange={(e) => setSelectedTimeframe(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="year">This Year</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Content Type</label>
-                <select
-                  value={selectedContentType}
-                  onChange={(e) => setSelectedContentType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="all">All Content</option>
-                  <option value="community_post">Community Posts</option>
-                  <option value="ideas">Ideas</option>
-                  <option value="referral_jobs">Referral Jobs</option>
-                  <option value="tools">Tools</option>
-                </select>
-              </div>
+              {showFilters && (
+                <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <select
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">All Locations</option>
+                      <option value="New York">New York</option>
+                      <option value="Los Angeles">Los Angeles</option>
+                      <option value="Chicago">Chicago</option>
+                      <option value="Houston">Houston</option>
+                      <option value="Phoenix">Phoenix</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Timeframe</label>
+                    <select
+                      value={selectedTimeframe}
+                      onChange={(e) => setSelectedTimeframe(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="today">Today</option>
+                      <option value="week">This Week</option>
+                      <option value="month">This Month</option>
+                      <option value="year">This Year</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Content Type</label>
+                    <select
+                      value={selectedContentType}
+                      onChange={(e) => setSelectedContentType(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="all">All Content</option>
+                      <option value="community_post">Community Posts</option>
+                      <option value="ideas">Ideas</option>
+                      <option value="referral_jobs">Referral Jobs</option>
+                      <option value="tools">Tools</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
-        {/* Feed Items */}
-        {loading ? (
-          <div className="text-center py-8">
-            <Loader className="h-8 w-8 animate-spin mx-auto text-green-500" />
-            <p className="mt-2 text-gray-600">Loading feed...</p>
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-            <p className="text-red-700">{error}</p>
-          </div>
-        ) : feedItems.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No posts yet</h3>
-            <p className="text-gray-600 mb-4">
-              {searchQuery || selectedLocation || selectedTimeframe !== 'all' || selectedContentType !== 'all'
-                ? 'No posts match your filters. Try adjusting your search criteria.'
-                : 'Be the first to post in your community!'}
-            </p>
-            {(searchQuery || selectedLocation || selectedTimeframe !== 'all' || selectedContentType !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setSelectedLocation('')
-                  setSelectedTimeframe('all')
-                  setSelectedContentType('all')
-                }}
-                className="text-green-600 hover:text-green-700 font-medium"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {feedItems.map((item, index) => (
-              <div 
-                key={`${item.type}-${item.id}-${index}`}
-                className={`bg-white rounded-lg shadow overflow-hidden ${
-                  item.type === 'promotion' ? 'border-2 border-yellow-200' : ''
-                }`}
-              >
-                {/* Post Header */}
-                <div className="p-4 flex justify-between items-start">
-                  <div className="flex space-x-3">
-                    {/* User Avatar or Content Type Icon */}
-                    <div className="flex-shrink-0">
-                      {item.type === 'community_post' && item.user_avatar_url ? (
-                        <img 
-                          src={item.user_avatar_url} 
-                          alt={item.user_name} 
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : item.type === 'referral_job' && item.logo_url ? (
-                        <img 
-                          src={item.logo_url} 
-                          alt={item.business_name} 
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
-                          {getItemIcon(item)}
+            
+            {/* Feed Items */}
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader className="h-8 w-8 animate-spin mx-auto text-green-500" />
+                <p className="mt-2 text-gray-600">Loading feed...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                <p className="text-red-700">{error}</p>
+              </div>
+            ) : feedItems.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No posts yet</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchQuery || selectedLocation || selectedTimeframe !== 'all' || selectedContentType !== 'all'
+                    ? 'No posts match your filters. Try adjusting your search criteria.'
+                    : 'Be the first to post in your community!'}
+                </p>
+                {(searchQuery || selectedLocation || selectedTimeframe !== 'all' || selectedContentType !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSelectedLocation('')
+                      setSelectedTimeframe('all')
+                      setSelectedContentType('all')
+                    }}
+                    className="text-green-600 hover:text-green-700 font-medium"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {feedItems.map((item, index) => (
+                  <div 
+                    key={`${item.type}-${item.id}-${index}`}
+                    className={`bg-white rounded-lg shadow overflow-hidden ${
+                      item.type === 'promotion' ? 'border-2 border-yellow-200' : ''
+                    }`}
+                  >
+                    {/* Post Header */}
+                    <div className="p-4 flex justify-between items-start">
+                      <div className="flex space-x-3">
+                        {/* User Avatar or Content Type Icon */}
+                        <div className="flex-shrink-0">
+                          {item.type === 'community_post' && item.user_avatar_url ? (
+                            <img 
+                              src={item.user_avatar_url} 
+                              alt={item.user_name} 
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : item.type === 'referral_job' && item.logo_url ? (
+                            <img 
+                              src={item.logo_url} 
+                              alt={item.business_name} 
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
+                              {getItemIcon(item)}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Post Info */}
+                        <div>
+                          <div className="flex items-center">
+                            <h3 className="font-semibold text-gray-900">
+                              {getItemTitle(item)}
+                            </h3>
+                            {getItemPromotionBadge(item)}
+                          </div>
+                          
+                          <div className="flex items-center text-sm text-gray-500 space-x-2">
+                            <span>{getItemSubtitle(item)}</span>
+                            
+                            {item.type !== 'promotion' && (
+                              <>
+                                <span>•</span>
+                                <span>{formatTimeAgo(item.created_at)}</span>
+                              </>
+                            )}
+                            
+                            {getItemLocation(item) && (
+                              <>
+                                <span>•</span>
+                                <div className="flex items-center space-x-1">
+                                  <MapPin className="h-3 w-3" />
+                                  <span>{getItemLocation(item)}</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <button className="text-gray-400 hover:text-gray-600">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </button>
+                    </div>
+                    
+                    {/* Post Content */}
+                    <div 
+                      className="px-4 pb-3 cursor-pointer"
+                      onClick={() => handleItemClick(item)}
+                    >
+                      <p className="text-gray-800 whitespace-pre-line mb-3">
+                        {getItemContent(item)}
+                      </p>
+                      
+                      {/* Post Image */}
+                      {getItemImage(item) && (
+                        <div className="mb-3">
+                          <img 
+                            src={getItemImage(item)!} 
+                            alt="Post content" 
+                            className="w-full h-auto rounded-lg object-cover max-h-96"
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Special content for referral jobs */}
+                      {item.type === 'referral_job' && (
+                        <div className="bg-blue-50 p-3 rounded-lg mb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <DollarSign className="h-4 w-4 text-blue-600" />
+                              <span className="text-blue-700 font-medium">
+                                {item.commission_type === 'percentage' 
+                                  ? `${item.commission}% Commission` 
+                                  : `$${item.commission} Commission`}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <Clock className="h-4 w-4 text-blue-600" />
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                item.urgency === 'high' ? 'bg-red-100 text-red-800' :
+                                item.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {item.urgency} Priority
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Special content for tools */}
+                      {item.type === 'tool' && (
+                        <div className="bg-purple-50 p-3 rounded-lg mb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Wrench className="h-4 w-4 text-purple-600" />
+                              <span className="text-purple-700 font-medium">
+                                {item.type} Tool
+                              </span>
+                            </div>
+                            
+                            {item.price > 0 ? (
+                              <div className="text-green-600 font-semibold">
+                                ${item.price}
+                              </div>
+                            ) : (
+                              <div className="text-green-600 font-semibold">
+                                Free
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Special content for ideas */}
+                      {item.type === 'idea' && item.price > 0 && (
+                        <div className="bg-green-50 p-3 rounded-lg mb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Lightbulb className="h-4 w-4 text-green-600" />
+                              <span className="text-green-700 font-medium">
+                                Premium Idea
+                              </span>
+                            </div>
+                            
+                            <div className="text-green-600 font-semibold">
+                              ${item.price}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
                     
-                    {/* Post Info */}
-                    <div>
-                      <div className="flex items-center">
-                        <h3 className="font-semibold text-gray-900">
-                          {getItemTitle(item)}
-                        </h3>
-                        {getItemPromotionBadge(item)}
-                      </div>
+                    {/* Post Actions */}
+                    <div className="px-4 py-2 border-t border-gray-100 flex justify-between">
+                      <button 
+                        onClick={() => handleLikePost(item)}
+                        className={`flex items-center space-x-1 px-2 py-1 rounded-md ${
+                          isItemLiked(item) 
+                            ? 'text-red-500' 
+                            : 'text-gray-500 hover:text-red-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Heart className={`h-5 w-5 ${isItemLiked(item) ? 'fill-current' : ''}`} />
+                        <span>{getItemLikes(item)}</span>
+                      </button>
                       
-                      <div className="flex items-center text-sm text-gray-500 space-x-2">
-                        <span>{getItemSubtitle(item)}</span>
-                        
-                        {item.type !== 'promotion' && (
-                          <>
-                            <span>•</span>
-                            <span>{formatTimeAgo(item.created_at)}</span>
-                          </>
-                        )}
-                        
-                        {getItemLocation(item) && (
-                          <>
-                            <span>•</span>
-                            <div className="flex items-center space-x-1">
-                              <MapPin className="h-3 w-3" />
-                              <span>{getItemLocation(item)}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      <button 
+                        onClick={() => handleCommentClick(item)}
+                        className="flex items-center space-x-1 px-2 py-1 rounded-md text-gray-500 hover:text-blue-500 hover:bg-gray-100"
+                      >
+                        <MessageSquare className="h-5 w-5" />
+                        <span>{getItemComments(item)}</span>
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleShareClick(item)}
+                        className="flex items-center space-x-1 px-2 py-1 rounded-md text-gray-500 hover:text-green-500 hover:bg-gray-100"
+                      >
+                        <Share2 className="h-5 w-5" />
+                        <span>Share</span>
+                      </button>
                     </div>
                   </div>
-                  
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </button>
-                </div>
+                ))}
                 
-                {/* Post Content */}
-                <div 
-                  className="px-4 pb-3 cursor-pointer"
-                  onClick={() => handleItemClick(item)}
-                >
-                  <p className="text-gray-800 whitespace-pre-line mb-3">
-                    {getItemContent(item)}
-                  </p>
-                  
-                  {/* Post Image */}
-                  {getItemImage(item) && (
-                    <div className="mb-3">
-                      <img 
-                        src={getItemImage(item)!} 
-                        alt="Post content" 
-                        className="w-full h-auto rounded-lg object-cover max-h-96"
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Special content for referral jobs */}
-                  {item.type === 'referral_job' && (
-                    <div className="bg-blue-50 p-3 rounded-lg mb-3">
-                      <div className="flex items-center justify-between">
+                {/* Load More */}
+                {hasMore && (
+                  <div className="text-center">
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 border border-gray-300 rounded-lg shadow-sm"
+                    >
+                      {loadingMore ? (
                         <div className="flex items-center space-x-2">
-                          <DollarSign className="h-4 w-4 text-blue-600" />
-                          <span className="text-blue-700 font-medium">
-                            {item.commission_type === 'percentage' 
-                              ? `${item.commission}% Commission` 
-                              : `$${item.commission} Commission`}
-                          </span>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          <span>Loading more...</span>
                         </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-blue-600" />
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            item.urgency === 'high' ? 'bg-red-100 text-red-800' :
-                            item.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {item.urgency} Priority
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Special content for tools */}
-                  {item.type === 'tool' && (
-                    <div className="bg-purple-50 p-3 rounded-lg mb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Wrench className="h-4 w-4 text-purple-600" />
-                          <span className="text-purple-700 font-medium">
-                            {item.type} Tool
-                          </span>
-                        </div>
-                        
-                        {item.price > 0 ? (
-                          <div className="text-green-600 font-semibold">
-                            ${item.price}
-                          </div>
-                        ) : (
-                          <div className="text-green-600 font-semibold">
-                            Free
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Special content for ideas */}
-                  {item.type === 'idea' && item.price > 0 && (
-                    <div className="bg-green-50 p-3 rounded-lg mb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Lightbulb className="h-4 w-4 text-green-600" />
-                          <span className="text-green-700 font-medium">
-                            Premium Idea
-                          </span>
-                        </div>
-                        
-                        <div className="text-green-600 font-semibold">
-                          ${item.price}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Post Actions */}
-                <div className="px-4 py-2 border-t border-gray-100 flex justify-between">
-                  <button 
-                    onClick={() => handleLikePost(item)}
-                    className={`flex items-center space-x-1 px-2 py-1 rounded-md ${
-                      isItemLiked(item) 
-                        ? 'text-red-500' 
-                        : 'text-gray-500 hover:text-red-500 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Heart className={`h-5 w-5 ${isItemLiked(item) ? 'fill-current' : ''}`} />
-                    <span>{getItemLikes(item)}</span>
-                  </button>
-                  
-                  <button 
-                    onClick={() => handleCommentClick(item)}
-                    className="flex items-center space-x-1 px-2 py-1 rounded-md text-gray-500 hover:text-blue-500 hover:bg-gray-100"
-                  >
-                    <MessageSquare className="h-5 w-5" />
-                    <span>{getItemComments(item)}</span>
-                  </button>
-                  
-                  <button 
-                    onClick={() => handleShareClick(item)}
-                    className="flex items-center space-x-1 px-2 py-1 rounded-md text-gray-500 hover:text-green-500 hover:bg-gray-100"
-                  >
-                    <Share2 className="h-5 w-5" />
-                    <span>Share</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-            
-            {/* Load More */}
-            {hasMore && (
-              <div className="text-center">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 border border-gray-300 rounded-lg shadow-sm"
-                >
-                  {loadingMore ? (
-                    <div className="flex items-center space-x-2">
-                      <Loader className="h-4 w-4 animate-spin" />
-                      <span>Loading more...</span>
-                    </div>
-                  ) : (
-                    'Load More'
-                  )}
-                </button>
+                      ) : (
+                        'Load More'
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+          
+          {/* Right Column - Curated Content */}
+          <div className="lg:w-1/3 space-y-6">
+            {/* Recent Ideas */}
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Recent Ideas</h3>
+                <button 
+                  onClick={() => navigate('/dashboard/ideas-vault')}
+                  className="text-green-600 hover:text-green-700 text-sm font-medium"
+                >
+                  View All
+                </button>
+              </div>
+              
+              {loadingRightColumn ? (
+                <div className="animate-pulse space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : recentIdeas.length === 0 ? (
+                <div className="text-center py-4">
+                  <Lightbulb className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No ideas yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentIdeas.map((idea) => (
+                    <div 
+                      key={idea.id}
+                      className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                      onClick={() => navigate(`/dashboard/ideas/${idea.id}`)}
+                    >
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Lightbulb className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 truncate">{idea.title}</h4>
+                        <div className="flex items-center text-xs text-gray-500 space-x-2">
+                          <span>{idea.category}</span>
+                          <span>•</span>
+                          <div className="flex items-center space-x-1">
+                            <Eye className="h-3 w-3" />
+                            <span>{idea.views}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button
+                    onClick={() => navigate('/dashboard/ideas-vault')}
+                    className="w-full text-center text-green-600 hover:text-green-700 text-sm font-medium flex items-center justify-center space-x-1 mt-2"
+                  >
+                    <span>Explore Ideas Vault</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* Top Referral Jobs */}
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Top Referral Jobs</h3>
+                <button 
+                  onClick={() => navigate('/dashboard/referral-jobs')}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  View All
+                </button>
+              </div>
+              
+              {loadingRightColumn ? (
+                <div className="animate-pulse space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : topReferralJobs.length === 0 ? (
+                <div className="text-center py-4">
+                  <Building className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No referral jobs yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {topReferralJobs.map((job) => (
+                    <div 
+                      key={job.id}
+                      className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                      onClick={() => navigate(`/dashboard/referral-jobs/${job.id}`)}
+                    >
+                      {job.logo_url ? (
+                        <img 
+                          src={job.logo_url} 
+                          alt={job.business_name} 
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Building className="h-5 w-5 text-blue-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 truncate">{job.title}</h4>
+                        <div className="flex items-center text-xs text-gray-500 space-x-2">
+                          <span>{job.business_name}</span>
+                          <span>•</span>
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-3 w-3" />
+                            <span>
+                              {job.commission_type === 'percentage' 
+                                ? `${job.commission}%` 
+                                : `$${job.commission}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button
+                    onClick={() => navigate('/dashboard/referral-jobs')}
+                    className="w-full text-center text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center justify-center space-x-1 mt-2"
+                  >
+                    <span>Browse Referral Jobs</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* Featured Tools */}
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Featured Tools</h3>
+                <button 
+                  onClick={() => navigate('/dashboard/starter-tools')}
+                  className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+                >
+                  View All
+                </button>
+              </div>
+              
+              {loadingRightColumn ? (
+                <div className="animate-pulse space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex space-x-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : featuredTools.length === 0 ? (
+                <div className="text-center py-4">
+                  <Wrench className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No tools yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {featuredTools.map((tool) => (
+                    <div 
+                      key={tool.id}
+                      className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                      onClick={() => navigate('/dashboard/starter-tools')}
+                    >
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Wrench className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 truncate">{tool.title}</h4>
+                        <div className="flex items-center text-xs text-gray-500 space-x-2">
+                          <span>{tool.category}</span>
+                          <span>•</span>
+                          <div className="flex items-center space-x-1">
+                            <Download className="h-3 w-3" />
+                            <span>{tool.downloads_count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button
+                    onClick={() => navigate('/dashboard/starter-tools')}
+                    className="w-full text-center text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center justify-center space-x-1 mt-2"
+                  >
+                    <span>Explore Starter Tools</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* Stats Widget */}
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="font-semibold text-gray-900 mb-4">Your Stats</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-green-50 p-3 rounded-lg text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <Eye className="h-4 w-4 text-green-600 mr-1" />
+                    <span className="text-sm font-medium text-green-700">Views</span>
+                  </div>
+                  <p className="text-xl font-bold text-green-800">0</p>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <Heart className="h-4 w-4 text-blue-600 mr-1" />
+                    <span className="text-sm font-medium text-blue-700">Likes</span>
+                  </div>
+                  <p className="text-xl font-bold text-blue-800">0</p>
+                </div>
+                
+                <div className="bg-purple-50 p-3 rounded-lg text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <MessageSquare className="h-4 w-4 text-purple-600 mr-1" />
+                    <span className="text-sm font-medium text-purple-700">Comments</span>
+                  </div>
+                  <p className="text-xl font-bold text-purple-800">0</p>
+                </div>
+                
+                <div className="bg-yellow-50 p-3 rounded-lg text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <Target className="h-4 w-4 text-yellow-600 mr-1" />
+                    <span className="text-sm font-medium text-yellow-700">Referrals</span>
+                  </div>
+                  <p className="text-xl font-bold text-yellow-800">0</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
