@@ -257,7 +257,7 @@ const ReferralJobs = () => {
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [locationSearchQuery, setLocationSearchQuery] = useState('')
+  const [selectedLocation, setSelectedLocation] = useState('')
   const [commissionTypeFilter, setCommissionTypeFilter] = useState<'all' | 'percentage' | 'fixed'>('all')
   const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all')
   const [sortBy, setSortBy] = useState<'newest' | 'commission' | 'urgent'>('newest')
@@ -287,9 +287,19 @@ const ReferralJobs = () => {
     'Real Estate', 'Education', 'Entertainment', 'Transportation', 'Home Services', 'Other'
   ]
 
+  // Location options
+  const locations = [
+    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ',
+    'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',
+    'Austin, TX', 'Jacksonville, FL', 'Fort Worth, TX', 'Columbus, OH', 'Charlotte, NC',
+    'San Francisco, CA', 'Indianapolis, IN', 'Seattle, WA', 'Denver, CO', 'Washington, DC',
+    'Boston, MA', 'El Paso, TX', 'Nashville, TN', 'Detroit, MI', 'Oklahoma City, OK',
+    'Portland, OR', 'Las Vegas, NV', 'Memphis, TN', 'Louisville, KY', 'Baltimore, MD'
+  ].sort()
+
   useEffect(() => {
     loadJobs(true)
-  }, [searchQuery, selectedCategory, locationSearchQuery, commissionTypeFilter, urgencyFilter, sortBy])
+  }, [searchQuery, selectedCategory, selectedLocation, commissionTypeFilter, urgencyFilter, sortBy])
 
   const loadJobs = async (reset = false) => {
     try {
@@ -322,9 +332,9 @@ const ReferralJobs = () => {
         fetchedJobs = fetchedJobs.filter(job => job.category === selectedCategory)
       }
 
-      if (locationSearchQuery) {
+      if (selectedLocation) {
         fetchedJobs = fetchedJobs.filter(job => 
-          job.location && job.location.toLowerCase().includes(locationSearchQuery.toLowerCase())
+          job.location && job.location.toLowerCase().includes(selectedLocation.toLowerCase())
         )
       }
       
@@ -395,12 +405,6 @@ const ReferralJobs = () => {
       case 'referral-jobs':
         // Stay on current page
         break
-      case 'business-pages':
-        navigate('/dashboard/business-pages')
-        break
-      case 'community':
-        navigate('/dashboard/community')
-        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break
@@ -409,6 +413,9 @@ const ReferralJobs = () => {
         break
       case 'my-posts':
         navigate('/dashboard/my-posts')
+        break
+      case 'vault-stats':
+        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')
@@ -528,7 +535,7 @@ const ReferralJobs = () => {
   const clearFilters = () => {
     setSearchQuery('')
     setSelectedCategory('')
-    setLocationSearchQuery('')
+    setSelectedLocation('')
     setCommissionTypeFilter('all')
     setUrgencyFilter('all')
     setSortBy('newest')
@@ -537,7 +544,7 @@ const ReferralJobs = () => {
   const activeFiltersCount = [
     searchQuery,
     selectedCategory,
-    locationSearchQuery,
+    selectedLocation,
     commissionTypeFilter !== 'all' ? commissionTypeFilter : '',
     urgencyFilter !== 'all' ? urgencyFilter : '',
     sortBy !== 'newest' ? sortBy : ''
@@ -569,6 +576,7 @@ const ReferralJobs = () => {
       <div className="min-h-screen bg-gray-50 flex">
         <Sidebar 
           isOpen={sidebarOpen}
+          currentPage="referral-jobs"
           onNavigate={handleNavigation}
           onClose={() => setSidebarOpen(false)}
         />
@@ -611,6 +619,7 @@ const ReferralJobs = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
         isOpen={sidebarOpen}
+        currentPage="referral-jobs"
         onNavigate={handleNavigation}
         onClose={() => setSidebarOpen(false)}
       />
@@ -699,16 +708,16 @@ const ReferralJobs = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={locationSearchQuery}
-                      onChange={(e) => setLocationSearchQuery(e.target.value)}
-                      placeholder="Search any location..."
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                  <select
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Locations</option>
+                    {locations.map(location => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -771,7 +780,7 @@ const ReferralJobs = () => {
           <div className="max-w-6xl mx-auto">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
                   onClick={() => loadJobs(true)}
                   className="mt-2 text-red-600 hover:text-red-700 font-medium text-sm"
@@ -790,7 +799,7 @@ const ReferralJobs = () => {
                   className="text-xl font-semibold text-gray-900 mb-2"
                   style={{ fontFamily: 'Montserrat' }}
                 >
-                  {searchQuery || selectedCategory || locationSearchQuery || commissionTypeFilter !== 'all' || urgencyFilter !== 'all'
+                  {searchQuery || selectedCategory || selectedLocation || commissionTypeFilter !== 'all' || urgencyFilter !== 'all'
                     ? 'No jobs match your filters' 
                     : 'No referral jobs yet'
                   }
@@ -799,7 +808,7 @@ const ReferralJobs = () => {
                   className="text-gray-600 mb-6"
                   style={{ fontFamily: 'Inter' }}
                 >
-                  {searchQuery || selectedCategory || locationSearchQuery || commissionTypeFilter !== 'all' || urgencyFilter !== 'all'
+                  {searchQuery || selectedCategory || selectedLocation || commissionTypeFilter !== 'all' || urgencyFilter !== 'all'
                     ? 'Try adjusting your search criteria or filters.'
                     : 'Be the first to create a referral job and start earning commissions!'
                   }
@@ -812,7 +821,7 @@ const ReferralJobs = () => {
                   >
                     Create Your First Job
                   </button>
-                  {(searchQuery || selectedCategory || locationSearchQuery || commissionTypeFilter !== 'all' || urgencyFilter !== 'all') && (
+                  {(searchQuery || selectedCategory || selectedLocation || commissionTypeFilter !== 'all' || urgencyFilter !== 'all') && (
                     <button
                       onClick={clearFilters}
                       className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50"

@@ -92,12 +92,6 @@ const MyPosts = () => {
       case 'referral-jobs':
         navigate('/dashboard/referral-jobs')
         break
-      case 'business-pages':
-        navigate('/dashboard/business-pages')
-        break
-      case 'community':
-        navigate('/dashboard/community')
-        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break
@@ -106,6 +100,9 @@ const MyPosts = () => {
         break
       case 'my-posts':
         // Stay on current page
+        break
+      case 'vault-stats':
+        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')
@@ -212,6 +209,7 @@ const MyPosts = () => {
       <div className="min-h-screen bg-gray-50 flex">
         <Sidebar 
           isOpen={sidebarOpen}
+          currentPage="my-posts"
           onNavigate={handleNavigation}
           onClose={() => setSidebarOpen(false)}
         />
@@ -256,6 +254,7 @@ const MyPosts = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
         isOpen={sidebarOpen}
+        currentPage="my-posts"
         onNavigate={handleNavigation}
         onClose={() => setSidebarOpen(false)}
       />
@@ -319,7 +318,7 @@ const MyPosts = () => {
           <div className="max-w-6xl mx-auto">
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
+                <p className="text-red-700\" style={{ fontFamily: 'Inter' }}>{error}</p>
                 <button
                   onClick={() => {
                     setError('')
