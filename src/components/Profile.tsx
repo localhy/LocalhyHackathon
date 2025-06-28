@@ -6,6 +6,7 @@ import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
 import { getUserProfile, updateUserProfile, uploadAvatar } from '../lib/database'
 import { supabase } from '../lib/supabase'
+import BusinessPagePrompt from './BusinessPagePrompt'
 
 const Profile = () => {
   const navigate = useNavigate()
@@ -323,6 +324,11 @@ const Profile = () => {
         {/* Content */}
         <div className="flex-1 p-4 lg:p-6">
           <div className="max-w-4xl mx-auto space-y-6">
+            {/* Business Page Prompt - Only show when not editing */}
+            {!isEditing && profileData.userType === 'business-owner' && (
+              <BusinessPagePrompt user={user} />
+            )}
+
             {/* Error/Success Messages */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
