@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Building, Lightbulb, Megaphone, Wrench, ArrowRight, MapPin, ExternalLink, Users, Calendar, Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { userHasBusinessProfile } from '../../lib/database'
+import { userHasBusinessProfile, getRecentCommunityOpportunities, type FeaturedOpportunity } from '../../lib/database'
 
 interface CommunitySidebarProps {
   className?: string
@@ -12,10 +12,13 @@ const CommunitySidebar: React.FC<CommunitySidebarProps> = ({ className = '' }) =
   const navigate = useNavigate()
   const { user } = useAuth()
   const [hasBusinessPage, setHasBusinessPage] = useState(false)
+  const [featuredOpportunities, setFeaturedOpportunities] = useState<FeaturedOpportunity[]>([])
+  const [loading, setLoading] = useState(true)
   
   useEffect(() => {
     if (user) {
       checkBusinessProfile()
+      loadFeaturedOpportunities()
     }
   }, [user])
   
@@ -29,29 +32,21 @@ const CommunitySidebar: React.FC<CommunitySidebarProps> = ({ className = '' }) =
       console.error('Error checking business profile:', error)
     }
   }
-
-  const featuredItems = [
-    {
-      type: 'idea',
-      title: 'Mobile Car Detailing Service',
-      author: 'Sarah Johnson',
-      location: 'Austin, TX'
-    },
-    {
-      type: 'referral',
-      title: 'Refer customers to our new bakery',
-      business: 'Sweet Delights',
-      commission: '15%',
-      location: 'Portland, OR'
-    },
-    {
-      type: 'business',
-      title: 'Green Thumb Landscaping',
-      category: 'Home Services',
-      location: 'Denver, CO'
-    }
-  ]
   
+  const loadFeaturedOpportunities = async () => {
+    try {
+      setLoading(true)
+      const opportunities = await getRecentCommunityOpportunities(3)
+      setFeaturedOpportunities(opportunities)
+    } catch (error) {
+      console.error('Error loading featured opportunities:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Upcoming events - This is still mock data since there's no events table in the database
+  // In a real implementation, this would fetch from an events table
   const upcomingEvents = [
     {
       title: 'Farmers Market',
@@ -174,65 +169,105 @@ const CommunitySidebar: React.FC<CommunitySidebarProps> = ({ className = '' }) =
         </h3>
         
         <div className="space-y-3">
-          {featuredItems.map((item, index) => (
-            <div 
-              key={index}
-              className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
-            >
-              {item.type === 'idea' && (
-                <>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Lightbulb className="h-4 w-4 text-green-500" />
-                    <span className="text-sm font-medium text-gray-900">{item.title}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span>by {item.author}</span>
-                    <span>•</span>
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>{item.location}</span>
+          {loading ? (
+            // Loading skeleton
+            Array(3).fill(0).map((_, index) => (
+              <div key={index} className="p-3 border border-gray-100 rounded-lg animate-pulse">
+                <div className="flex items-center space-x-2 mb-1">
+                  <div className="w-4 h-4 bg-gray-200 rounded-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))
+          ) : featuredOpportunities.length > 0 ? (
+            // Real data
+            featuredOpportunities.map((item, index) => (
+              <div 
+                key={index}
+                className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
+                onClick={() => {
+                  if (item.type === 'idea') {
+                    navigate(`/dashboard/ideas/${item.id}`)
+                  } else if (item.type === 'referral') {
+                    navigate(`/dashboard/referral-jobs/${item.id}`)
+                  } else if (item.type === 'business') {
+                    navigate(`/dashboard/business/${item.id}`)
+                  }
+                }}
+              >
+                {item.type === 'idea' && (
+                  <>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Lightbulb className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium text-gray-900">{item.title}</span>
                     </div>
-                  </div>
-                </>
-              )}
-              
-              {item.type === 'referral' && (
-                <>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Megaphone className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-medium text-gray-900">{item.title}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span>{item.business}</span>
-                    <span>•</span>
-                    <span className="text-green-600 font-medium">{item.commission}</span>
-                    <span>•</span>
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>{item.location}</span>
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      {item.author && <span>by {item.author}</span>}
+                      {item.author && item.location && <span>•</span>}
+                      {item.location && (
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{item.location}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </>
-              )}
-              
-              {item.type === 'business' && (
-                <>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Building className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm font-medium text-gray-900">{item.title}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span>{item.category}</span>
-                    <span>•</span>
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>{item.location}</span>
+                  </>
+                )}
+                
+                {item.type === 'referral' && (
+                  <>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Megaphone className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium text-gray-900">{item.title}</span>
                     </div>
-                  </div>
-                </>
-              )}
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      {item.business && <span>{item.business}</span>}
+                      {item.business && item.commission && <span>•</span>}
+                      {item.commission && (
+                        <span className="text-green-600 font-medium">
+                          {item.commission_type === 'percentage' ? `${item.commission}%` : `$${item.commission}`}
+                        </span>
+                      )}
+                      {(item.business || item.commission) && item.location && <span>•</span>}
+                      {item.location && (
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{item.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                
+                {item.type === 'business' && (
+                  <>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Building className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm font-medium text-gray-900">{item.title}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      {item.category && <span>{item.category}</span>}
+                      {item.category && item.location && <span>•</span>}
+                      {item.location && (
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{item.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
+          ) : (
+            // No data
+            <div className="text-center py-4 text-gray-500 text-sm">
+              No opportunities available yet
             </div>
-          ))}
+          )}
           
           <button
             onClick={() => navigate('/dashboard/ideas-vault')}
