@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getReferralJobs, createMessage, incrementPromotionClicks, getActivePromotionForContent, type ReferralJob } from '../lib/database'
+import { getReferralJobs, likeReferralJob, createMessage, incrementPromotionClicks, getActivePromotionForContent, type ReferralJob } from '../lib/database'
 
 // Share modal component
 const ShareModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, isVisible: boolean, onClose: () => void }) => {
@@ -484,18 +484,19 @@ const ReferralJobs = () => {
     if (!user) return
 
     try {
-      // TODO: Implement like functionality with database
-      console.log('Like job:', jobId)
-      // Update local state optimistically
-      setJobs(prev => prev.map(job => 
-        job.id === jobId 
-          ? { 
-              ...job, 
-              liked_by_user: !job.liked_by_user,
-              likes: job.liked_by_user ? (job.likes || 0) - 1 : (job.likes || 0) + 1
-            }
-          : job
-      ))
+      const success = await likeReferralJob(jobId, user.id)
+      if (success) {
+        // Update local state
+        setJobs(prev => prev.map(job => 
+          job.id === jobId 
+            ? { 
+                ...job, 
+                liked_by_user: !job.liked_by_user,
+                likes: job.liked_by_user ? (job.likes || 0) - 1 : (job.likes || 0) + 1
+              }
+            : job
+        ))
+      }
     } catch (error) {
       console.error('Error liking job:', error)
     }

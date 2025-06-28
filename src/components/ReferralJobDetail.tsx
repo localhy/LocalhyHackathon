@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, DollarSign, Clock, Users, Building, Globe, Phone, Mail, Share2, Send, X, Copy, Facebook, Twitter, Linkedin, AlertCircle, Check, Loader, Calendar, Star, Flag, MoreVertical, User } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Clock, Users, Building, Globe, Phone, Mail, Share2, Send, X, Copy, Facebook, Twitter, Linkedin, AlertCircle, Check, Loader, Calendar, Star, Flag, MoreVertical, User, Heart, MessageCircle } from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getReferralJobById, createMessage, type ReferralJob } from '../lib/database'
+import { getReferralJobById, createMessage, likeReferralJob, getCommentsByContent, createComment, likeComment, type ReferralJob, type Comment } from '../lib/database'
 
 // Share modal component
 const ShareModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, isVisible: boolean, onClose: () => void }) => {
@@ -254,6 +254,12 @@ const ReferralJobDetail = () => {
   const [error, setError] = useState('')
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [applyModalOpen, setApplyModalOpen] = useState(false)
+  
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
+  const [commentError, setCommentError] = useState('')
 
   useEffect(() => {
     const loadJob = async () => {
@@ -266,9 +272,15 @@ const ReferralJobDetail = () => {
       try {
         setLoading(true)
         setError('')
-        const fetchedJob = await getReferralJobById(id)
+        const fetchedJob = await getReferralJobById(id, user?.id)
         if (fetchedJob) {
           setJob(fetchedJob)
+          
+          // Load comments
+          if (user) {
+            const jobComments = await getCommentsByContent(fetchedJob.id, 'referral_job', user.id)
+            setComments(jobComments)
+          }
         } else {
           setError('Referral job not found')
         }
@@ -281,7 +293,7 @@ const ReferralJobDetail = () => {
     }
 
     loadJob()
-  }, [id])
+  }, [id, user])
 
   const handleNavigation = (page: string) => {
     setSidebarOpen(false)
@@ -349,6 +361,72 @@ const ReferralJobDetail = () => {
 
   const handleApply = () => {
     setApplyModalOpen(true)
+  }
+  
+  const handleLike = async () => {
+    if (!job || !user) return
+
+    try {
+      const success = await likeReferralJob(job.id, user.id)
+      if (success) {
+        setJob(prev => prev ? {
+          ...prev,
+          liked_by_user: !prev.liked_by_user,
+          likes: prev.liked_by_user ? (prev.likes || 0) - 1 : (prev.likes || 0) + 1
+        } : null)
+      }
+    } catch (error) {
+      console.error('Error liking job:', error)
+    }
+  }
+  
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || !job || !user || submittingComment) return
+
+    setSubmittingComment(true)
+    setCommentError('')
+    
+    try {
+      const comment = await createComment({
+        content_id: job.id,
+        content_type: 'referral_job',
+        user_id: user.id,
+        content: newComment.trim()
+      })
+
+      if (comment) {
+        setComments(prev => [comment, ...prev])
+        setNewComment('')
+      } else {
+        throw new Error('Failed to create comment')
+      }
+    } catch (error: any) {
+      console.error('Error submitting comment:', error)
+      setCommentError(error.message || 'Failed to submit comment. Please try again.')
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+  
+  const handleCommentLike = async (commentId: string) => {
+    if (!user) return
+
+    try {
+      const success = await likeComment(commentId, user.id)
+      if (success) {
+        setComments(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { 
+                ...comment, 
+                liked_by_user: !comment.liked_by_user,
+                likes: comment.liked_by_user ? comment.likes - 1 : comment.likes + 1
+              }
+            : comment
+        ))
+      }
+    } catch (error) {
+      console.error('Error liking comment:', error)
+    }
   }
 
   if (loading) {
@@ -541,6 +619,111 @@ const ReferralJobDetail = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* Comments Section */}
+                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 mb-6"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Comments ({comments.length})
+                  </h3>
+
+                  {/* Comment Form */}
+                  {user && (
+                    <div className="mb-6">
+                      <div className="flex space-x-3">
+                        {user.user_metadata?.avatar_url ? (
+                          <img
+                            src={user.user_metadata.avatar_url}
+                            alt="Your avatar"
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                            <User className="h-5 w-5 text-white" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <textarea
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Share your thoughts..."
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            style={{ fontFamily: 'Inter' }}
+                          />
+                          {commentError && (
+                            <p className="text-red-600 text-sm mt-1">{commentError}</p>
+                          )}
+                          <div className="flex justify-end mt-2">
+                            <button
+                              onClick={handleSubmitComment}
+                              disabled={!newComment.trim() || submittingComment}
+                              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+                            >
+                              {submittingComment ? (
+                                <Loader className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4" />
+                              )}
+                              <span>Comment</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comments List */}
+                  <div className="space-y-6">
+                    {comments.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">
+                        No comments yet. Be the first to share your thoughts!
+                      </p>
+                    ) : (
+                      comments.map((comment) => (
+                        <div key={comment.id} className="flex space-x-3">
+                          {comment.user_profile?.avatar_url ? (
+                            <img
+                              src={comment.user_profile.avatar_url}
+                              alt={comment.user_profile.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center">
+                              <User className="h-5 w-5 text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="bg-gray-50 rounded-lg p-4">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="font-medium text-gray-900">
+                                  {comment.user_profile?.name || 'Anonymous'}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  {formatDate(comment.created_at)}
+                                </span>
+                              </div>
+                              <p className="text-gray-700">{comment.content}</p>
+                            </div>
+                            <div className="flex items-center space-x-4 mt-2">
+                              <button
+                                onClick={() => handleCommentLike(comment.id)}
+                                className={`flex items-center space-x-1 text-sm ${
+                                  comment.liked_by_user ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                                }`}
+                              >
+                                <Heart className={`h-4 w-4 ${comment.liked_by_user ? 'fill-current' : ''}`} />
+                                <span>{comment.likes}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Sidebar */}
@@ -666,12 +849,31 @@ const ReferralJobDetail = () => {
                         <span className="font-semibold text-purple-600">{job.referral_type}</span>
                       </div>
                     )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Heart className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">Likes</span>
+                      </div>
+                      <span className="font-semibold text-gray-900">{job.likes || 0}</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Actions */}
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                   <div className="space-y-3">
+                    <button 
+                      onClick={handleLike}
+                      className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors ${
+                        job.liked_by_user 
+                          ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      <Heart className={`h-4 w-4 ${job.liked_by_user ? 'fill-current' : ''}`} />
+                      <span>{job.liked_by_user ? 'Liked' : 'Like'} ({job.likes || 0})</span>
+                    </button>
+                    
                     <button 
                       onClick={handleShare}
                       className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"

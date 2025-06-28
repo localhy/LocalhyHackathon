@@ -108,7 +108,8 @@ export interface Tool {
 
 export interface Comment {
   id: string
-  idea_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
   user_id: string
   parent_id?: string
   content: string
@@ -267,7 +268,8 @@ export interface UpdateReferralJobData {
 }
 
 export interface CreateCommentData {
-  idea_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
   user_id: string
   parent_id?: string
   content: string
@@ -603,10 +605,18 @@ export const getReferralJobs = async (limit = 10, offset = 0, userId?: string): 
     return []
   }
 
-  // Add promotion status if data exists
-  if (data) {
-    const jobsWithPromotions = await Promise.all(
+  // Add user interaction data if userId is provided
+  if (userId && data) {
+    const jobsWithInteractions = await Promise.all(
       data.map(async (job) => {
+        // Check if user liked this job
+        const { data: likeData } = await supabase
+          .from('referral_job_likes')
+          .select('id')
+          .eq('referral_job_id', job.id)
+          .eq('user_id', userId)
+          .maybeSingle()
+
         // Check if job is promoted
         const { data: promotionData } = await supabase
           .from('promotions')
@@ -619,17 +629,18 @@ export const getReferralJobs = async (limit = 10, offset = 0, userId?: string): 
 
         return {
           ...job,
+          liked_by_user: !!likeData,
           is_promoted: !!promotionData
         }
       })
     )
-    return jobsWithPromotions
+    return jobsWithInteractions
   }
 
   return data || []
 }
 
-export const getReferralJobById = async (id: string): Promise<ReferralJob | null> => {
+export const getReferralJobById = async (id: string, userId?: string): Promise<ReferralJob | null> => {
   const { data, error } = await supabase
     .from('referral_jobs')
     .select(`
@@ -642,6 +653,22 @@ export const getReferralJobById = async (id: string): Promise<ReferralJob | null
   if (error) {
     console.error('Error fetching referral job:', error)
     return null
+  }
+
+  // Add user interaction data if userId is provided
+  if (userId && data) {
+    // Check if user liked this job
+    const { data: likeData } = await supabase
+      .from('referral_job_likes')
+      .select('id')
+      .eq('referral_job_id', data.id)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    return {
+      ...data,
+      liked_by_user: !!likeData
+    }
   }
 
   return data
@@ -729,6 +756,48 @@ export const deleteReferralJob = async (id: string): Promise<boolean> => {
   if (error) {
     console.error('Error deleting referral job:', error)
     return false
+  }
+
+  return true
+}
+
+export const likeReferralJob = async (jobId: string, userId: string): Promise<boolean> => {
+  // Check if already liked
+  const { data: existingLike } = await supabase
+    .from('referral_job_likes')
+    .select('id')
+    .eq('referral_job_id', jobId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existingLike) {
+    // Unlike
+    const { error } = await supabase
+      .from('referral_job_likes')
+      .delete()
+      .eq('referral_job_id', jobId)
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('Error unliking referral job:', error)
+      return false
+    }
+
+    // Decrement likes count
+    await supabase.rpc('decrement_referral_job_likes', { p_referral_job_id: jobId })
+  } else {
+    // Like
+    const { error } = await supabase
+      .from('referral_job_likes')
+      .insert({ referral_job_id: jobId, user_id: userId })
+
+    if (error) {
+      console.error('Error liking referral job:', error)
+      return false
+    }
+
+    // Increment likes count
+    await supabase.rpc('increment_referral_job_likes', { p_referral_job_id: jobId })
   }
 
   return true
@@ -822,19 +891,41 @@ export const deleteTool = async (id: string): Promise<boolean> => {
 }
 
 // Comments Functions
-export const getIdeaComments = async (ideaId: string): Promise<Comment[]> => {
+export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool', userId?: string): Promise<Comment[]> => {
   const { data, error } = await supabase
     .from('comments')
     .select(`
       *,
-      user_profiles!inner(name, avatar_url)
+      user_profile:user_profiles!inner(name, avatar_url)
     `)
-    .eq('idea_id', ideaId)
+    .eq('content_id', contentId)
+    .eq('content_type', contentType)
     .order('created_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching comments:', error)
     return []
+  }
+
+  // Add user interaction data if userId is provided
+  if (userId && data) {
+    const commentsWithInteractions = await Promise.all(
+      data.map(async (comment) => {
+        // Check if user liked this comment
+        const { data: likeData } = await supabase
+          .from('comment_likes')
+          .select('id')
+          .eq('comment_id', comment.id)
+          .eq('user_id', userId)
+          .maybeSingle()
+
+        return {
+          ...comment,
+          liked_by_user: !!likeData
+        }
+      })
+    )
+    return commentsWithInteractions
   }
 
   return data || []
@@ -846,7 +937,7 @@ export const createComment = async (commentData: CreateCommentData): Promise<Com
     .insert(commentData)
     .select(`
       *,
-      user_profiles!inner(name, avatar_url)
+      user_profile:user_profiles!inner(name, avatar_url)
     `)
     .single()
 
