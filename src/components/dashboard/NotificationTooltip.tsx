@@ -25,12 +25,22 @@ const NotificationTooltip: React.FC<NotificationTooltipProps> = ({ isOpen, onClo
       
       // Set up real-time subscription
       const subscription = subscribeToUserNotifications(user.id, (payload) => {
+        // Add comprehensive payload validation at the very beginning
+        if (!payload || typeof payload !== 'object') {
+          console.warn('Invalid payload received in notification subscription:', payload)
+          return
+        }
+
+        console.log('Notification tooltip update:', payload)
+        
         if (payload.eventType === 'INSERT') {
           // Add explicit type and null checks for payload.new
           const newNotification = payload.new
           if (typeof newNotification === 'object' && newNotification !== null && 
               newNotification.id && newNotification.title && newNotification.message) {
             setNotifications(prev => [newNotification, ...prev].slice(0, 5)) // Keep only latest 5
+          } else {
+            console.warn('Invalid new notification data:', newNotification)
           }
         } else if (payload.eventType === 'UPDATE') {
           // Add explicit type and null checks for payload.new
@@ -42,6 +52,8 @@ const NotificationTooltip: React.FC<NotificationTooltipProps> = ({ isOpen, onClo
                 notif.id === updatedNotification.id ? updatedNotification : notif
               )
             )
+          } else {
+            console.warn('Invalid updated notification data:', updatedNotification)
           }
         } else if (payload.eventType === 'DELETE') {
           // Add explicit type and null checks for payload.old
@@ -51,6 +63,8 @@ const NotificationTooltip: React.FC<NotificationTooltipProps> = ({ isOpen, onClo
             setNotifications(prev => 
               prev.filter(notif => notif.id !== deletedNotification.id)
             )
+          } else {
+            console.warn('Invalid deleted notification data:', deletedNotification)
           }
         }
       })
