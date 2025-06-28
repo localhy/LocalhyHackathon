@@ -24,6 +24,111 @@ export interface UserProfile {
   instagram?: string
 }
 
+export interface BusinessProfile {
+  id: string
+  user_id: string
+  business_name: string
+  category: string
+  city?: string
+  state?: string
+  country?: string
+  description: string
+  address?: string
+  operating_hours?: Record<string, any>
+  thumbnail_url: string
+  cover_photo_url?: string
+  gallery_urls?: string[]
+  youtube_video_url?: string
+  referral_reward_amount?: number
+  referral_reward_type?: 'percentage' | 'fixed'
+  referral_cta_link?: string
+  promo_tagline?: string
+  email: string
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
+  years_in_business?: number
+  certifications_urls?: string[]
+  customer_reviews?: any[]
+  enable_referrals: boolean
+  display_earnings_publicly: boolean
+  enable_questions_comments: boolean
+  status: 'pending' | 'active' | 'inactive'
+  created_at: string
+  updated_at: string
+  user_profile?: UserProfile
+}
+
+export interface CreateBusinessProfileData {
+  user_id: string
+  business_name: string
+  category: string
+  city?: string
+  state?: string
+  country?: string
+  description: string
+  address?: string
+  operating_hours?: Record<string, any>
+  thumbnail_url: string
+  cover_photo_url?: string
+  gallery_urls?: string[]
+  youtube_video_url?: string
+  referral_reward_amount?: number
+  referral_reward_type?: 'percentage' | 'fixed'
+  referral_cta_link?: string
+  promo_tagline?: string
+  email: string
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
+  years_in_business?: number
+  certifications_urls?: string[]
+  customer_reviews?: any[]
+  enable_referrals?: boolean
+  display_earnings_publicly?: boolean
+  enable_questions_comments?: boolean
+  status?: 'pending' | 'active' | 'inactive'
+}
+
+export interface UpdateBusinessProfileData {
+  business_name?: string
+  category?: string
+  city?: string
+  state?: string
+  country?: string
+  description?: string
+  address?: string
+  operating_hours?: Record<string, any>
+  thumbnail_url?: string
+  cover_photo_url?: string
+  gallery_urls?: string[]
+  youtube_video_url?: string
+  referral_reward_amount?: number
+  referral_reward_type?: 'percentage' | 'fixed'
+  referral_cta_link?: string
+  promo_tagline?: string
+  email?: string
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
+  years_in_business?: number
+  certifications_urls?: string[]
+  customer_reviews?: any[]
+  enable_referrals?: boolean
+  display_earnings_publicly?: boolean
+  enable_questions_comments?: boolean
+  status?: 'pending' | 'active' | 'inactive'
+}
+
 export interface Idea {
   id: string
   user_id: string
@@ -365,6 +470,98 @@ export const updateUserPayPalEmail = async (userId: string, paypalEmail: string)
   }
 
   return true
+}
+
+// Business Profile Functions
+export const createBusinessProfile = async (data: CreateBusinessProfileData): Promise<BusinessProfile | null> => {
+  const { data: profile, error } = await supabase
+    .from('business_profiles')
+    .insert(data)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating business profile:', error)
+    throw new Error(error.message)
+  }
+
+  return profile
+}
+
+export const getBusinessProfileById = async (id: string): Promise<BusinessProfile | null> => {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .select(`
+      *,
+      user_profile:user_profiles(*)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching business profile:', error)
+    return null
+  }
+
+  return data
+}
+
+export const getUserBusinessProfiles = async (userId: string): Promise<BusinessProfile[]> => {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user business profiles:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export const updateBusinessProfile = async (id: string, updates: UpdateBusinessProfileData): Promise<BusinessProfile | null> => {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating business profile:', error)
+    return null
+  }
+
+  return data
+}
+
+export const deleteBusinessProfile = async (id: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('business_profiles')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting business profile:', error)
+    return false
+  }
+
+  return true
+}
+
+export const userHasBusinessProfile = async (userId: string): Promise<boolean> => {
+  const { data, error } = await supabase.rpc('user_has_business_profile', {
+    p_user_id: userId
+  })
+
+  if (error) {
+    console.error('Error checking if user has business profile:', error)
+    return false
+  }
+
+  return data
 }
 
 // Ideas Functions

@@ -25,6 +25,8 @@ import Profile from './components/Profile';
 import Settings from './components/Settings';
 import Notifications from './components/Notifications';
 import Messages from './components/Messages';
+import BusinessPageForm from './components/BusinessPageForm';
+import BusinessProfilePage from './components/BusinessProfilePage';
 
 const LandingPage = () => (
   <div className="min-h-screen bg-white">
@@ -213,6 +215,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Messages />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/create-business-page" 
+            element={
+              <ProtectedRoute>
+                <BusinessPageForm />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/business/:id" 
+            element={
+              <ProtectedRoute>
+                <BusinessProfilePage />
               </ProtectedRoute>
             } 
           />
