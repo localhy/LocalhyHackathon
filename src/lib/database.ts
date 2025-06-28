@@ -265,6 +265,16 @@ export interface FeaturedOpportunity {
   thumbnail_url?: string
 }
 
+export interface WalletStats {
+  cashCredits: number
+  freeCredits: number
+  fiatBalance: number
+  totalEarnings: number
+  totalSpent: number
+  pendingWithdrawals: number
+  recentTransactions: Transaction[]
+}
+
 // Constants
 export const REFERRAL_JOB_POSTING_COST = 5
 
@@ -357,6 +367,84 @@ export const getUserCredits = async (userId: string): Promise<{ cashCredits: num
   return { 
     cashCredits: data.credits || 0,
     freeCredits: data.free_credits || 0
+  }
+}
+
+// Wallet Functions
+export const getWalletStats = async (userId: string): Promise<WalletStats> => {
+  try {
+    // Get user profile with credits and fiat balance
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('credits, free_credits, fiat_balance')
+      .eq('id', userId)
+      .single()
+
+    if (profileError) {
+      console.error('Error fetching user profile for wallet stats:', profileError)
+      throw profileError
+    }
+
+    // Get recent transactions (last 10)
+    const { data: transactions, error: transactionsError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (transactionsError) {
+      console.error('Error fetching transactions for wallet stats:', transactionsError)
+    }
+
+    // Calculate total earnings (credit_earning, credit_transfer_received)
+    const { data: earningsData, error: earningsError } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .in('type', ['credit_earning', 'credit_transfer_received'])
+
+    // Calculate total spent (credit_usage, credit_purchase, credit_transfer_sent)
+    const { data: spentData, error: spentError } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .in('type', ['credit_usage', 'credit_purchase', 'credit_transfer_sent'])
+
+    // Calculate pending withdrawals
+    const { data: pendingData, error: pendingError } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('type', 'withdrawal')
+      .eq('status', 'pending')
+
+    const totalEarnings = earningsData?.reduce((sum, t) => sum + Number(t.amount), 0) || 0
+    const totalSpent = spentData?.reduce((sum, t) => sum + Number(t.amount), 0) || 0
+    const pendingWithdrawals = pendingData?.reduce((sum, t) => sum + Number(t.amount), 0) || 0
+
+    return {
+      cashCredits: profile?.credits || 0,
+      freeCredits: profile?.free_credits || 0,
+      fiatBalance: Number(profile?.fiat_balance) || 0,
+      totalEarnings,
+      totalSpent,
+      pendingWithdrawals,
+      recentTransactions: transactions || []
+    }
+  } catch (error) {
+    console.error('Error fetching wallet stats:', error)
+    return {
+      cashCredits: 0,
+      freeCredits: 0,
+      fiatBalance: 0,
+      totalEarnings: 0,
+      totalSpent: 0,
+      pendingWithdrawals: 0,
+      recentTransactions: []
+    }
   }
 }
 
