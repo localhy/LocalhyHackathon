@@ -10,7 +10,9 @@ import {
   User,
   Settings,
   LogOut,
-  X
+  X,
+  Building,
+  Users
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -28,6 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, currentPage, onNavigate, onCl
     { id: 'dashboard', label: 'Home', icon: Home },
     { id: 'ideas-vault', label: 'Ideas Vault', icon: Lightbulb },
     { id: 'referral-jobs', label: 'Referral Jobs', icon: Megaphone },
+    { id: 'business-pages', label: 'Business Pages', icon: Building },
+    { id: 'community', label: 'Community', icon: Users },
     { id: 'starter-tools', label: 'Starter Tools', icon: Wrench },
     { id: 'my-posts', label: 'My Posts', icon: FileText },
     { id: 'wallet', label: 'Wallet', icon: Wallet },

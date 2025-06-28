@@ -27,6 +27,8 @@ import Notifications from './components/Notifications';
 import Messages from './components/Messages';
 import BusinessPageForm from './components/BusinessPageForm';
 import BusinessProfilePage from './components/BusinessProfilePage';
+import BusinessPagesList from './components/BusinessPagesList';
+import CommunityPage from './components/CommunityPage';
 
 const LandingPage = () => (
   <div className="min-h-screen bg-white">
@@ -231,6 +233,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <BusinessProfilePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/business-pages" 
+            element={
+              <ProtectedRoute>
+                <BusinessPagesList />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/community" 
+            element={
+              <ProtectedRoute>
+                <CommunityPage />
               </ProtectedRoute>
             } 
           />
