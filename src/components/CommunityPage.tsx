@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Users, Newspaper, ShoppingBag, Calendar, UserPlus, MessageCircle, Search, Filter, Plus, User, Heart, Share2, MapPin, Clock, ChevronDown } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import CommunityFeed from './community/CommunityFeed'
-import CommunitySidebar from './community/CommunitySidebar'
 
 interface TabProps {
   id: string
@@ -39,23 +37,11 @@ const Tab: React.FC<TabProps> = ({ id, label, icon: Icon, count, isActive, onCli
 
 const CommunityPage = () => {
   const navigate = useNavigate()
-  const location = useLocation()
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('news-feed')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-
-  // Check for post ID in URL query params
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search)
-    const postId = searchParams.get('post')
-    
-    if (postId) {
-      // TODO: Implement opening specific post
-      console.log('Open post with ID:', postId)
-    }
-  }, [location])
 
   const handleNavigation = (page: string) => {
     setSidebarOpen(false)
@@ -108,26 +94,10 @@ const CommunityPage = () => {
   ]
 
   const renderTabContent = () => {
-    if (activeTab === 'news-feed') {
-      return (
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main Feed - Left Column (2/3 width on large screens) */}
-          <div className="lg:col-span-2">
-            <CommunityFeed />
-          </div>
-          
-          {/* Sidebar - Right Column (1/3 width on large screens) */}
-          <div className="hidden lg:block">
-            <CommunitySidebar />
-          </div>
-        </div>
-      )
-    }
-    
-    // For other tabs, show coming soon message
     const comingSoonMessage = (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          {activeTab === 'news-feed' && <Newspaper className="h-8 w-8 text-blue-500" />}
           {activeTab === 'marketplace' && <ShoppingBag className="h-8 w-8 text-blue-500" />}
           {activeTab === 'groups' && <Users className="h-8 w-8 text-blue-500" />}
           {activeTab === 'events' && <Calendar className="h-8 w-8 text-blue-500" />}
@@ -143,6 +113,7 @@ const CommunityPage = () => {
           className="text-gray-600 mb-6 max-w-md mx-auto"
           style={{ fontFamily: 'Inter' }}
         >
+          {activeTab === 'news-feed' && "We're working on bringing you a personalized news feed with updates from your local community."}
           {activeTab === 'marketplace' && "Soon you'll be able to buy, sell, and trade items with people in your local area."}
           {activeTab === 'groups' && "Join interest-based groups in your community to connect with like-minded neighbors."}
           {activeTab === 'events' && "Discover and create local events happening in your neighborhood."}
