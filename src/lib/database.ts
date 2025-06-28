@@ -2001,3 +2001,12 @@ export const transferCredits = async (
     throw new Error(error.message || 'Failed to transfer credits')
   }
 }
+
+// Export the transferUserCredits function that matches the import in Wallet.tsx
+export const transferUserCredits = async (
+  senderId: string, 
+  recipientIdentifier: string, 
+  amount: number
+): Promise<boolean> => {
+  return transferCredits(senderId, recipientIdentifier, amount)
+}
