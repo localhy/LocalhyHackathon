@@ -730,3 +730,5 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
 }
 
 export default CommunityNewsfeed
+
+export default CommunityNewsfeed
