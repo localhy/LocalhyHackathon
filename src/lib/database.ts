@@ -12,6 +12,7 @@ export interface UserProfile {
   created_at: string
   updated_at: string
   credits?: number
+  free_credits?: number
   fiat_balance?: number
   paypal_email?: string
   // Contact and social media fields
@@ -144,7 +145,7 @@ export interface Message {
 export interface Transaction {
   id: string
   user_id: string
-  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion'
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion' | 'credit_transfer_sent' | 'credit_transfer_received'
   amount: number
   credits: number
   currency: string
@@ -178,10 +179,16 @@ export interface Promotion {
 
 export interface WalletStats {
   currentCredits: number
+  freeCredits: number
   fiatBalance: number
   totalEarned: number
   totalSpent: number
   pendingEarnings: number
+}
+
+export interface CreditBalance {
+  cashCredits: number
+  freeCredits: number
 }
 
 // Create types for form data
@@ -641,14 +648,16 @@ export const getReferralJobById = async (id: string): Promise<ReferralJob | null
 }
 
 export const createReferralJobWithPayment = async (jobData: CreateReferralJobData): Promise<ReferralJob | null> => {
-  // Check if user has enough credits
+  // Check if user has enough credits (combined free and cash)
   const { data: userProfile } = await supabase
     .from('user_profiles')
-    .select('credits')
+    .select('credits, free_credits')
     .eq('id', jobData.user_id)
     .single()
 
-  if (!userProfile || (userProfile.credits || 0) < REFERRAL_JOB_POSTING_COST) {
+  const totalCredits = (userProfile?.credits || 0) + (userProfile?.free_credits || 0)
+  
+  if (!userProfile || totalCredits < REFERRAL_JOB_POSTING_COST) {
     throw new Error('Insufficient credits to post referral job')
   }
 
@@ -1098,19 +1107,22 @@ export const subscribeToUserProfile = (userId: string, callback: (payload: any) 
 }
 
 // Wallet Functions
-export const getUserCredits = async (userId: string): Promise<number> => {
+export const getUserCredits = async (userId: string): Promise<CreditBalance> => {
   const { data, error } = await supabase
     .from('user_profiles')
-    .select('credits')
+    .select('credits, free_credits')
     .eq('id', userId)
     .single()
 
   if (error) {
     console.error('Error fetching user credits:', error)
-    return 0
+    return { cashCredits: 0, freeCredits: 0 }
   }
 
-  return data?.credits || 0
+  return {
+    cashCredits: data?.credits || 0,
+    freeCredits: data?.free_credits || 0
+  }
 }
 
 export const getUserTransactions = async (userId: string, limit = 50): Promise<Transaction[]> => {
@@ -1134,7 +1146,7 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
     // Get user profile for current balances
     const { data: userProfile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('credits, fiat_balance')
+      .select('credits, free_credits, fiat_balance')
       .eq('id', userId)
       .single()
 
@@ -1159,18 +1171,19 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
     const completedTransactions = transactions?.filter(t => t.status === 'completed') || []
 
     const totalEarned = completedTransactions
-      .filter(t => ['credit_earning', 'refund'].includes(t.type))
+      .filter(t => ['credit_earning', 'refund', 'credit_transfer_received'].includes(t.type))
       .reduce((sum, t) => sum + Number(t.credits), 0)
 
     const totalSpent = completedTransactions
-      .filter(t => ['credit_usage', 'credit_purchase'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amount), 0)
+      .filter(t => ['credit_usage', 'credit_purchase', 'credit_transfer_sent'].includes(t.type))
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount || t.credits)), 0)
 
     const pendingEarnings = transactions?.filter(t => t.status === 'pending' && ['credit_earning'].includes(t.type))
       .reduce((sum, t) => sum + Number(t.credits), 0) || 0
 
     return {
       currentCredits: userProfile?.credits || 0,
+      freeCredits: userProfile?.free_credits || 0,
       fiatBalance: Number(userProfile?.fiat_balance) || 0,
       totalEarned,
       totalSpent,
@@ -1181,6 +1194,7 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
     // Return default stats in case of error
     return {
       currentCredits: 0,
+      freeCredits: 0,
       fiatBalance: 0,
       totalEarned: 0,
       totalSpent: 0,
@@ -1450,5 +1464,46 @@ export const createPromotionAd = async (promotionData: CreatePromotionData): Pro
   } catch (error: any) {
     console.error('Error creating promotion:', error)
     throw new Error(error.message || 'Failed to create promotion')
+  }
+}
+
+// Credit transfer function
+export const transferCredits = async (
+  senderId: string, 
+  recipientIdentifier: string, 
+  amount: number
+): Promise<boolean> => {
+  try {
+    // Validate amount
+    if (amount <= 0) {
+      throw new Error('Transfer amount must be greater than zero')
+    }
+
+    // Check if sender has enough credits
+    const { data: senderProfile } = await supabase
+      .from('user_profiles')
+      .select('credits')
+      .eq('id', senderId)
+      .single()
+
+    if (!senderProfile || (senderProfile.credits || 0) < amount) {
+      throw new Error('Insufficient credits for transfer')
+    }
+
+    // Call the RPC function to handle the transfer
+    const { data, error } = await supabase.rpc('transfer_user_credits', {
+      p_sender_id: senderId,
+      p_recipient_identifier: recipientIdentifier,
+      p_amount: amount
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return true
+  } catch (error: any) {
+    console.error('Error transferring credits:', error)
+    throw new Error(error.message || 'Failed to transfer credits')
   }
 }

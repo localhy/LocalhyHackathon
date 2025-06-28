@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { TrendingUp, Eye, Target, Share2 } from 'lucide-react'
+import { getUserCredits } from '../../lib/database'
 
 interface WelcomeBlockProps {
   user: any
@@ -7,7 +8,8 @@ interface WelcomeBlockProps {
 
 const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
   const [stats, setStats] = useState({
-    credits: 0,
+    cashCredits: 0,
+    freeCredits: 0,
     views: 0,
     referrals: 0,
     toolsShared: 0
@@ -26,14 +28,26 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
     const hasActivity = stats.views > 0 || stats.referrals > 0 || stats.toolsShared > 0
     setIsNewUser(hoursSinceCreation < 24 && !hasActivity)
 
-    // For new users, stats start at 0 (real-time data)
-    setStats({
-      credits: 0,
-      views: 0,
-      referrals: 0,
-      toolsShared: 0
-    })
+    // Load user credits
+    if (user) {
+      loadUserCredits()
+    }
   }, [user])
+
+  const loadUserCredits = async () => {
+    if (!user) return
+    
+    try {
+      const credits = await getUserCredits(user.id)
+      setStats(prev => ({
+        ...prev,
+        cashCredits: credits.cashCredits,
+        freeCredits: credits.freeCredits
+      }))
+    } catch (error) {
+      console.error('Error loading user credits:', error)
+    }
+  }
 
   const firstName = user?.user_metadata?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
 
@@ -67,7 +81,10 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
               </span>
             </div>
             <p className="text-xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
-              💰 {stats.credits}
+              💰 {stats.cashCredits}
+              {stats.freeCredits > 0 && (
+                <span className="text-xs ml-1 text-purple-600">+{stats.freeCredits} free</span>
+              )}
             </p>
           </div>
 

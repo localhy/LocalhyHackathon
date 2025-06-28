@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { CreditCard, DollarSign, TrendingUp, Download, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, AlertCircle, Loader, Save, Mail, Eye, EyeOff } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { CreditCard, DollarSign, TrendingUp, Download, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, AlertCircle, Loader, Save, Mail, Eye, EyeOff, Send, User, Search } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
@@ -11,8 +11,10 @@ import {
   processWithdrawal,
   getUserProfile,
   updateUserPayPalEmail,
+  transferCredits,
   type Transaction,
-  type WalletStats 
+  type WalletStats,
+  type UserProfile
 } from '../lib/database'
 
 const Wallet = () => {
@@ -22,6 +24,7 @@ const Wallet = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [stats, setStats] = useState<WalletStats>({
     currentCredits: 0,
+    freeCredits: 0,
     fiatBalance: 0,
     totalEarned: 0,
     totalSpent: 0,
@@ -51,6 +54,13 @@ const Wallet = () => {
   const [savingPaypal, setSavingPaypal] = useState(false)
   const [paypalSuccess, setPaypalSuccess] = useState('')
   const [paypalError, setPaypalError] = useState('')
+
+  // Transfer credits form
+  const [transferAmount, setTransferAmount] = useState('')
+  const [recipientIdentifier, setRecipientIdentifier] = useState('')
+  const [transferring, setTransferring] = useState(false)
+  const [transferError, setTransferError] = useState('')
+  const [transferSuccess, setTransferSuccess] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -149,6 +159,8 @@ const Wallet = () => {
     setSuccess('')
     setPaypalError('')
     setPaypalSuccess('')
+    setTransferError('')
+    setTransferSuccess('')
   }
 
   const handleConvertCredits = async () => {
@@ -244,6 +256,34 @@ const Wallet = () => {
     }
   }
 
+  const handleTransferCredits = async () => {
+    if (!user || !transferAmount || !recipientIdentifier) return
+
+    const amount = parseInt(transferAmount)
+    if (amount <= 0 || amount > stats.currentCredits) {
+      setTransferError('Invalid amount. Please enter a valid number of credits.')
+      return
+    }
+
+    setTransferring(true)
+    setTransferError('')
+    setTransferSuccess('')
+
+    try {
+      const success = await transferCredits(user.id, recipientIdentifier, amount)
+      if (success) {
+        setTransferSuccess(`Successfully transferred ${amount} credits to ${recipientIdentifier}!`)
+        setTransferAmount('')
+        setRecipientIdentifier('')
+        await loadWalletData() // Refresh data
+      }
+    } catch (err: any) {
+      setTransferError(err.message || 'Failed to transfer credits')
+    } finally {
+      setTransferring(false)
+    }
+  }
+
   const getTransactionIcon = (transaction: Transaction) => {
     switch (transaction.type) {
       case 'credit_purchase':
@@ -256,6 +296,10 @@ const Wallet = () => {
         return <TrendingUp className="h-4 w-4 text-green-500" />
       case 'credit_to_fiat_conversion':
         return <DollarSign className="h-4 w-4 text-purple-500" />
+      case 'credit_transfer_sent':
+        return <Send className="h-4 w-4 text-orange-500" />
+      case 'credit_transfer_received':
+        return <ArrowDownLeft className="h-4 w-4 text-blue-500" />
       default:
         return <CreditCard className="h-4 w-4 text-gray-500" />
     }
@@ -291,6 +335,7 @@ const Wallet = () => {
     { id: 'convert', label: 'Convert Credits' },
     { id: 'withdraw', label: 'Withdraw Cash' },
     { id: 'purchase', label: 'Buy Credits' },
+    { id: 'transfer', label: 'Transfer Credits' },
     { id: 'transactions', label: 'Transactions' }
   ]
 
@@ -401,14 +446,36 @@ const Wallet = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
-                          Credits
+                          Cash Credits
                         </p>
                         <p className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
                           {stats.currentCredits}
                         </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Convertible to cash
+                        </p>
                       </div>
                       <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                         <CreditCard className="h-6 w-6 text-green-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
+                          Free Credits
+                        </p>
+                        <p className="text-2xl font-bold text-purple-600" style={{ fontFamily: 'Montserrat' }}>
+                          {stats.freeCredits}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          For referral job posts only
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <CreditCard className="h-6 w-6 text-purple-600" />
                       </div>
                     </div>
                   </div>
@@ -422,25 +489,12 @@ const Wallet = () => {
                         <p className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Montserrat' }}>
                           ${stats.fiatBalance.toFixed(2)}
                         </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Withdrawable to PayPal
+                        </p>
                       </div>
                       <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                         <DollarSign className="h-6 w-6 text-blue-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
-                          Total Earned
-                        </p>
-                        <p className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
-                          {stats.totalEarned}
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <TrendingUp className="h-6 w-6 text-green-600" />
                       </div>
                     </div>
                   </div>
@@ -453,6 +507,9 @@ const Wallet = () => {
                         </p>
                         <p className="text-2xl font-bold text-yellow-600" style={{ fontFamily: 'Montserrat' }}>
                           {stats.pendingEarnings}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Credits being processed
                         </p>
                       </div>
                       <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -470,7 +527,7 @@ const Wallet = () => {
                   >
                     Quick Actions
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid md:grid-cols-4 gap-4">
                     <button
                       onClick={() => handleTabChange('convert')}
                       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
@@ -518,6 +575,23 @@ const Wallet = () => {
                             Buy Credits
                           </h4>
                           <p className="text-sm text-gray-600">Purchase more credits</p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabChange('transfer')}
+                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                          <Send className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
+                            Transfer Credits
+                          </h4>
+                          <p className="text-sm text-gray-600">Send to other users</p>
                         </div>
                       </div>
                     </button>
@@ -591,6 +665,9 @@ const Wallet = () => {
                       <p className="text-blue-700 text-sm">
                         1 Credit = $1.00 USD
                       </p>
+                      <p className="text-blue-700 text-sm mt-2">
+                        <strong>Note:</strong> Only cash credits can be converted to cash. Free credits cannot be converted.
+                      </p>
                     </div>
                   </div>
 
@@ -607,9 +684,10 @@ const Wallet = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       placeholder="Enter amount"
                     />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Available: {stats.currentCredits} credits
-                    </p>
+                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                      <span>Available Cash Credits: {stats.currentCredits}</span>
+                      <span>Free Credits: {stats.freeCredits} (not convertible)</span>
+                    </div>
                   </div>
 
                   {convertAmount && (
@@ -895,7 +973,7 @@ const Wallet = () => {
                         <h3 className="text-xl font-bold mb-1">100 Credits</h3>
                         <p className="text-green-500 font-semibold mb-1">$85.00</p>
                         <p className="text-xs text-gray-400 mb-1">Save $15.00</p>
-                        <p className="text-xs text-yellow-400 mb-3">Get an additional 200 FREE credits!</p>
+                        <p className="text-xs text-yellow-400 mb-3">Get an additional 200 FREE credits for referral job posts!</p>
                       </div>
                       <div className="mt-auto">
                         <div className="grid grid-cols-2 gap-2">
@@ -919,6 +997,116 @@ const Wallet = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Transfer Credits Tab */}
+            {activeTab === 'transfer' && (
+              <div className="max-w-2xl mx-auto">
+                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
+                  <h2 
+                    className="text-2xl font-bold text-gray-900 mb-6"
+                    style={{ fontFamily: 'Montserrat' }}
+                  >
+                    Transfer Credits to Another User
+                  </h2>
+                  
+                  {/* Transfer Credits Success/Error Messages */}
+                  {(transferError || transferSuccess) && (
+                    <div className="mb-6">
+                      {transferError && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+                          <AlertCircle className="h-5 w-5 text-red-500" />
+                          <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{transferError}</p>
+                        </div>
+                      )}
+                      {transferSuccess && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <p className="text-green-700" style={{ fontFamily: 'Inter' }}>{transferSuccess}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-blue-800 mb-2">About Credit Transfers</h3>
+                      <p className="text-blue-700 text-sm">
+                        You can transfer your cash credits to other users. Free credits cannot be transferred.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipient Email or User ID
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={recipientIdentifier}
+                        onChange={(e) => setRecipientIdentifier(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="Email address or user ID"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Enter the email address or user ID of the recipient
+                    </p>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Amount to Transfer
+                    </label>
+                    <input
+                      type="number"
+                      value={transferAmount}
+                      onChange={(e) => setTransferAmount(e.target.value)}
+                      max={stats.currentCredits}
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      placeholder="Enter amount"
+                    />
+                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                      <span>Available Cash Credits: {stats.currentCredits}</span>
+                      <span>Free Credits: {stats.freeCredits} (not transferable)</span>
+                    </div>
+                  </div>
+
+                  {transferAmount && recipientIdentifier && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between text-sm">
+                        <span>Credits to transfer:</span>
+                        <span>{transferAmount}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Recipient:</span>
+                        <span>{recipientIdentifier}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleTransferCredits}
+                    disabled={!transferAmount || !recipientIdentifier || transferring || parseInt(transferAmount) > stats.currentCredits}
+                    className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+                  >
+                    {transferring ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin" />
+                        <span>Transferring...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        <span>Transfer Credits</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             )}
