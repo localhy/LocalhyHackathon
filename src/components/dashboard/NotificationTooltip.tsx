@@ -26,24 +26,30 @@ const NotificationTooltip: React.FC<NotificationTooltipProps> = ({ isOpen, onClo
       // Set up real-time subscription
       const subscription = subscribeToUserNotifications(user.id, (payload) => {
         if (payload.eventType === 'INSERT') {
-          // Validate payload.new before adding to notifications
-          if (payload.new && payload.new.id && payload.new.title && payload.new.message) {
-            setNotifications(prev => [payload.new, ...prev].slice(0, 5)) // Keep only latest 5
+          // Add explicit type and null checks for payload.new
+          const newNotification = payload.new
+          if (typeof newNotification === 'object' && newNotification !== null && 
+              newNotification.id && newNotification.title && newNotification.message) {
+            setNotifications(prev => [newNotification, ...prev].slice(0, 5)) // Keep only latest 5
           }
         } else if (payload.eventType === 'UPDATE') {
-          // Validate payload.new before updating notifications
-          if (payload.new && payload.new.id) {
+          // Add explicit type and null checks for payload.new
+          const updatedNotification = payload.new
+          if (typeof updatedNotification === 'object' && updatedNotification !== null && 
+              updatedNotification.id) {
             setNotifications(prev => 
               prev.map(notif => 
-                notif.id === payload.new.id ? payload.new : notif
+                notif.id === updatedNotification.id ? updatedNotification : notif
               )
             )
           }
         } else if (payload.eventType === 'DELETE') {
-          // Validate payload.old before removing notification
-          if (payload.old && payload.old.id) {
+          // Add explicit type and null checks for payload.old
+          const deletedNotification = payload.old
+          if (typeof deletedNotification === 'object' && deletedNotification !== null && 
+              deletedNotification.id) {
             setNotifications(prev => 
-              prev.filter(notif => notif.id !== payload.old.id)
+              prev.filter(notif => notif.id !== deletedNotification.id)
             )
           }
         }
