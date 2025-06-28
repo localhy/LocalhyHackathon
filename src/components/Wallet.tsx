@@ -1,29 +1,346 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { CreditCard, DollarSign, TrendingUp, Download, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, AlertCircle, Loader, Save, Mail, Eye, EyeOff, Send, User, Search } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { 
+  Wallet as WalletIcon, 
+  CreditCard, 
+  DollarSign, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  RefreshCw, 
+  Send, 
+  Plus, 
+  ChevronDown, 
+  ChevronUp, 
+  AlertTriangle, 
+  Info, 
+  Loader, 
+  Mail, 
+  User, 
+  Search, 
+  Filter, 
+  ArrowRight, 
+  Gift, 
+  Zap, 
+  Shield
+} from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
 import { 
-  getWalletStats, 
+  getUserCredits, 
   getUserTransactions, 
+  getWalletStats, 
   transferCreditsToFiatBalance, 
-  processWithdrawal,
-  getUserProfile,
-  updateUserPayPalEmail,
+  processWithdrawal, 
+  updateUserPayPalEmail, 
   transferCredits,
-  type Transaction,
-  type WalletStats,
-  type UserProfile
+  type Transaction, 
+  type WalletStats 
 } from '../lib/database'
+
+// Credit Purchase Card Component
+const CreditPurchaseCard = ({ 
+  credits, 
+  price, 
+  bonusCredits = 0, 
+  popular = false, 
+  onPurchase 
+}: { 
+  credits: number
+  price: number
+  bonusCredits?: number
+  popular?: boolean
+  onPurchase: (credits: number, price: number) => void
+}) => {
+  return (
+    <div className={`border rounded-xl p-6 ${popular ? 'border-green-500 bg-green-50' : 'border-gray-200'} relative`}>
+      {popular && (
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+          Most Popular
+        </div>
+      )}
+      
+      <div className="text-center mb-4">
+        <div className="text-3xl font-bold text-gray-900">
+          {credits} <span className="text-green-500">Credits</span>
+        </div>
+        {bonusCredits > 0 && (
+          <div className="text-sm text-green-600 font-medium mt-1">
+            + {bonusCredits} FREE Credits
+          </div>
+        )}
+        <div className="text-xl font-semibold mt-2">
+          ${price}
+        </div>
+        <div className="text-gray-500 text-sm mt-1">
+          {(price / (credits + bonusCredits)).toFixed(2)} per credit
+        </div>
+      </div>
+      
+      <button
+        onClick={() => onPurchase(credits, price)}
+        className={`w-full py-2 px-4 rounded-lg font-medium ${
+          popular 
+            ? 'bg-green-500 hover:bg-green-600 text-white' 
+            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+        }`}
+      >
+        Buy Now
+      </button>
+    </div>
+  )
+}
+
+// PayPal Email Modal Component
+const PayPalEmailModal = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  currentEmail = '', 
+  saving = false 
+}: { 
+  isOpen: boolean
+  onClose: () => void
+  onSave: (email: string) => void
+  currentEmail?: string
+  saving?: boolean
+}) => {
+  const [email, setEmail] = useState(currentEmail)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      setEmail(currentEmail)
+      setError('')
+    }
+  }, [isOpen, currentEmail])
+
+  const handleSubmit = () => {
+    // Validate email
+    if (!email.trim()) {
+      setError('Email is required')
+      return
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address')
+      return
+    }
+    
+    onSave(email)
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Set PayPal Email
+        </h3>
+        
+        <p className="text-gray-600 mb-4 text-sm">
+          Enter the PayPal email address where you want to receive your withdrawals. Make sure this email is associated with your PayPal account.
+        </p>
+        
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            PayPal Email
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your.email@example.com"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            />
+          </div>
+          {error && (
+            <p className="mt-1 text-sm text-red-600">{error}</p>
+          )}
+        </div>
+        
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium flex items-center space-x-2"
+          >
+            {saving ? (
+              <>
+                <Loader className="h-4 w-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>Save</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Transfer Credits Modal Component
+const TransferCreditsModal = ({ 
+  isOpen, 
+  onClose, 
+  onTransfer, 
+  availableCredits = 0, 
+  transferring = false 
+}: { 
+  isOpen: boolean
+  onClose: () => void
+  onTransfer: (recipient: string, amount: number) => void
+  availableCredits?: number
+  transferring?: boolean
+}) => {
+  const [recipient, setRecipient] = useState('')
+  const [amount, setAmount] = useState(0)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      setRecipient('')
+      setAmount(0)
+      setError('')
+    }
+  }, [isOpen])
+
+  const handleSubmit = () => {
+    // Validate recipient
+    if (!recipient.trim()) {
+      setError('Recipient email or ID is required')
+      return
+    }
+    
+    // Validate amount
+    if (amount <= 0) {
+      setError('Amount must be greater than zero')
+      return
+    }
+    
+    if (amount > availableCredits) {
+      setError(`You can only transfer up to ${availableCredits} credits`)
+      return
+    }
+    
+    onTransfer(recipient, amount)
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Transfer Credits
+        </h3>
+        
+        <div className="bg-blue-50 p-4 rounded-lg mb-4">
+          <div className="flex items-center space-x-2">
+            <Info className="h-5 w-5 text-blue-500" />
+            <p className="text-blue-700 text-sm font-medium">
+              You can only transfer earned credits
+            </p>
+          </div>
+          <p className="text-blue-600 text-sm mt-1">
+            Available to transfer: <span className="font-semibold">{availableCredits} credits</span>
+          </p>
+        </div>
+        
+        <div className="space-y-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Recipient (Email or User ID)
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                placeholder="recipient@example.com"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Amount
+            </label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="number"
+                value={amount || ''}
+                onChange={(e) => setAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                min="1"
+                max={availableCredits}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+          </div>
+        </div>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+        
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={transferring || amount <= 0 || amount > availableCredits}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-lg font-medium flex items-center space-x-2"
+          >
+            {transferring ? (
+              <>
+                <Loader className="h-4 w-4 animate-spin" />
+                <span>Transferring...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                <span>Transfer</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const Wallet = () => {
   const navigate = useNavigate()
-  const location = useLocation()
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [stats, setStats] = useState<WalletStats>({
+  const [activeTab, setActiveTab] = useState('overview')
+  const [creditBalance, setCreditBalance] = useState<CreditBalance>({ cashCredits: 0, purchasedCredits: 0, freeCredits: 0 })
+  const [walletStats, setWalletStats] = useState<WalletStats>({
     currentCredits: 0,
+    purchasedCredits: 0,
     freeCredits: 0,
     fiatBalance: 0,
     totalEarned: 0,
@@ -34,80 +351,74 @@ const Wallet = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  // Tab management
-  const searchParams = new URLSearchParams(location.search)
-  const initialTab = searchParams.get('tab') || 'overview'
-  const [activeTab, setActiveTab] = useState(initialTab)
-
-  // Convert credits form
-  const [convertAmount, setConvertAmount] = useState('')
+  
+  // Conversion states
+  const [conversionAmount, setConversionAmount] = useState(0)
   const [converting, setConverting] = useState(false)
-
-  // Withdrawal form
-  const [withdrawAmount, setWithdrawAmount] = useState('')
+  
+  // Withdrawal states
+  const [withdrawalAmount, setWithdrawalAmount] = useState(0)
   const [withdrawing, setWithdrawing] = useState(false)
-
-  // PayPal email management
   const [paypalEmail, setPaypalEmail] = useState('')
-  const [showPaypalEmail, setShowPaypalEmail] = useState(false)
-  const [savingPaypal, setSavingPaypal] = useState(false)
-  const [paypalSuccess, setPaypalSuccess] = useState('')
-  const [paypalError, setPaypalError] = useState('')
-
-  // Transfer credits form
-  const [transferAmount, setTransferAmount] = useState('')
-  const [recipientIdentifier, setRecipientIdentifier] = useState('')
+  const [showPaypalModal, setShowPaypalModal] = useState(false)
+  const [savingPaypalEmail, setSavingPaypalEmail] = useState(false)
+  
+  // Transfer states
+  const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferring, setTransferring] = useState(false)
-  const [transferError, setTransferError] = useState('')
-  const [transferSuccess, setTransferSuccess] = useState('')
+  
+  // Transaction filter states
+  const [transactionType, setTransactionType] = useState('all')
+  const [expandedTransaction, setExpandedTransaction] = useState<string | null>(null)
+
+  // Get tab from URL query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const tab = searchParams.get('tab')
+    if (tab && ['overview', 'purchase', 'withdraw', 'transfer', 'history'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [])
 
   useEffect(() => {
     if (user) {
       loadWalletData()
-      loadPayPalEmail()
     }
   }, [user])
 
-  useEffect(() => {
-    // Update tab when URL changes
-    const searchParams = new URLSearchParams(location.search)
-    const tab = searchParams.get('tab') || 'overview'
-    setActiveTab(tab)
-  }, [location])
-
   const loadWalletData = async () => {
     if (!user) return
-
+    
     try {
       setLoading(true)
       setError('')
-
-      const [walletStats, userTransactions] = await Promise.all([
+      
+      // Fetch all wallet data in parallel
+      const [credits, stats, userTransactions] = await Promise.all([
+        getUserCredits(user.id),
         getWalletStats(user.id),
         getUserTransactions(user.id)
       ])
-
-      setStats(walletStats)
+      
+      setCreditBalance(credits)
+      setWalletStats(stats)
       setTransactions(userTransactions)
-    } catch (err: any) {
-      console.error('Error loading wallet data:', err)
-      setError(err.message || 'Failed to load wallet data')
+      
+      // Get PayPal email from user profile
+      const userProfile = await supabase
+        .from('user_profiles')
+        .select('paypal_email')
+        .eq('id', user.id)
+        .single()
+      
+      if (userProfile?.data?.paypal_email) {
+        setPaypalEmail(userProfile.data.paypal_email)
+      }
+    } catch (error: any) {
+      console.error('Error loading wallet data:', error)
+      setError(error.message || 'Failed to load wallet data. Please try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadPayPalEmail = async () => {
-    if (!user) return
-
-    try {
-      const profile = await getUserProfile(user.id)
-      if (profile?.paypal_email) {
-        setPaypalEmail(profile.paypal_email)
-      }
-    } catch (error) {
-      console.error('Error loading PayPal email:', error)
     }
   }
 
@@ -129,7 +440,7 @@ const Wallet = () => {
         break
       case 'community':
         navigate('/dashboard/community')
-        break  
+        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break
@@ -155,163 +466,178 @@ const Wallet = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    // Update URL without triggering a page reload
-    const newUrl = new URL(window.location.href)
-    newUrl.searchParams.set('tab', tab)
-    window.history.pushState({}, '', newUrl.toString())
+    // Update URL without reloading the page
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', tab)
+    window.history.pushState({}, '', url)
+  }
+
+  const handlePurchaseCredits = (credits: number, price: number) => {
+    // In a real app, this would open a payment modal or redirect to a payment page
+    console.log(`Purchase ${credits} credits for $${price}`)
     
-    // Clear messages when switching tabs
-    setError('')
-    setSuccess('')
-    setPaypalError('')
-    setPaypalSuccess('')
-    setTransferError('')
-    setTransferSuccess('')
+    // For demo purposes, show a success message
+    setSuccess(`This would initiate a payment flow for ${credits} credits ($${price})`)
+    setTimeout(() => setSuccess(''), 3000)
   }
 
   const handleConvertCredits = async () => {
-    if (!user || !convertAmount) return
-
-    const amount = parseInt(convertAmount)
-    if (amount <= 0 || amount > stats.currentCredits) {
-      setError('Invalid amount. Please enter a valid number of credits.')
+    if (!user || conversionAmount <= 0 || converting) return
+    
+    if (conversionAmount > creditBalance.cashCredits) {
+      setError('You can only convert earned credits to cash. Purchased credits cannot be converted.')
       return
     }
-
+    
     setConverting(true)
     setError('')
     setSuccess('')
-
+    
     try {
-      const success = await transferCreditsToFiatBalance(user.id, amount)
-      if (success) {
-        setSuccess(`Successfully converted ${amount} credits to $${amount.toFixed(2)} cash!`)
-        setConvertAmount('')
-        await loadWalletData() // Refresh data
+      const result = await transferCreditsToFiatBalance(user.id, conversionAmount)
+      
+      if (result) {
+        setSuccess(`Successfully converted ${conversionAmount} credits to $${conversionAmount} cash balance`)
+        setConversionAmount(0)
+        
+        // Reload wallet data to reflect changes
+        await loadWalletData()
+      } else {
+        throw new Error('Failed to convert credits to cash')
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to convert credits')
+    } catch (error: any) {
+      console.error('Error converting credits:', error)
+      setError(error.message || 'Failed to convert credits to cash. Please try again.')
     } finally {
       setConverting(false)
     }
   }
 
-  const handleSavePayPalEmail = async () => {
-    if (!user || !paypalEmail.trim()) {
-      setPaypalError('Please enter a valid PayPal email address')
+  const handleWithdraw = async () => {
+    if (!user || withdrawalAmount <= 0 || withdrawing) return
+    
+    if (withdrawalAmount < 50) {
+      setError('Minimum withdrawal amount is $50')
       return
     }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(paypalEmail)) {
-      setPaypalError('Please enter a valid email address')
+    
+    if (withdrawalAmount > walletStats.fiatBalance) {
+      setError('Insufficient balance for withdrawal')
       return
     }
-
-    setSavingPaypal(true)
-    setPaypalError('')
-    setPaypalSuccess('')
-
-    try {
-      const success = await updateUserPayPalEmail(user.id, paypalEmail.trim())
-      if (success) {
-        setPaypalSuccess('PayPal email saved successfully!')
-        setTimeout(() => setPaypalSuccess(''), 3000)
-      } else {
-        throw new Error('Failed to save PayPal email')
-      }
-    } catch (err: any) {
-      setPaypalError(err.message || 'Failed to save PayPal email')
-    } finally {
-      setSavingPaypal(false)
-    }
-  }
-
-  const handleWithdrawal = async () => {
-    if (!user || !withdrawAmount) return
-
-    const amount = parseFloat(withdrawAmount)
-    if (amount <= 0 || amount > stats.fiatBalance) {
-      setError('Invalid amount. Please enter a valid withdrawal amount.')
-      return
-    }
-
+    
     if (!paypalEmail) {
-      setError('Please set your PayPal email address first in the Withdrawal Settings section.')
+      setShowPaypalModal(true)
       return
     }
-
+    
     setWithdrawing(true)
     setError('')
     setSuccess('')
-
+    
     try {
-      const success = await processWithdrawal(user.id, amount)
-      if (success) {
-        const fee = amount * 0.15
-        const netAmount = amount - fee
-        setSuccess(`Withdrawal request submitted! You'll receive $${netAmount.toFixed(2)} after the 15% processing fee.`)
-        setWithdrawAmount('')
-        await loadWalletData() // Refresh data
+      const result = await processWithdrawal(user.id, withdrawalAmount)
+      
+      if (result) {
+        setSuccess(`Withdrawal request for $${withdrawalAmount} has been submitted`)
+        setWithdrawalAmount(0)
+        
+        // Reload wallet data to reflect changes
+        await loadWalletData()
+      } else {
+        throw new Error('Failed to process withdrawal')
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to process withdrawal')
+    } catch (error: any) {
+      console.error('Error processing withdrawal:', error)
+      setError(error.message || 'Failed to process withdrawal. Please try again.')
     } finally {
       setWithdrawing(false)
     }
   }
 
-  const handleTransferCredits = async () => {
-    if (!user || !transferAmount || !recipientIdentifier) return
+  const handleSavePaypalEmail = async (email: string) => {
+    if (!user) return
+    
+    setSavingPaypalEmail(true)
+    
+    try {
+      const success = await updateUserPayPalEmail(user.id, email)
+      
+      if (success) {
+        setPaypalEmail(email)
+        setShowPaypalModal(false)
+        
+        // If we were in the middle of a withdrawal, continue
+        if (withdrawalAmount > 0) {
+          handleWithdraw()
+        }
+      } else {
+        throw new Error('Failed to update PayPal email')
+      }
+    } catch (error: any) {
+      console.error('Error saving PayPal email:', error)
+      setError(error.message || 'Failed to save PayPal email. Please try again.')
+    } finally {
+      setSavingPaypalEmail(false)
+    }
+  }
 
-    const amount = parseInt(transferAmount)
-    if (amount <= 0 || amount > stats.currentCredits) {
-      setTransferError('Invalid amount. Please enter a valid number of credits.')
+  const handleTransferCredits = async (recipient: string, amount: number) => {
+    if (!user || amount <= 0 || transferring) return
+    
+    if (amount > creditBalance.cashCredits) {
+      setError('You can only transfer earned credits. Purchased credits cannot be transferred.')
       return
     }
-
+    
     setTransferring(true)
-    setTransferError('')
-    setTransferSuccess('')
-
+    setError('')
+    setSuccess('')
+    
     try {
-      const success = await transferCredits(user.id, recipientIdentifier, amount)
-      if (success) {
-        setTransferSuccess(`Successfully transferred ${amount} credits to ${recipientIdentifier}!`)
-        setTransferAmount('')
-        setRecipientIdentifier('')
-        await loadWalletData() // Refresh data
+      const result = await transferCredits(user.id, recipient, amount)
+      
+      if (result) {
+        setSuccess(`Successfully transferred ${amount} credits to ${recipient}`)
+        setShowTransferModal(false)
+        
+        // Reload wallet data to reflect changes
+        await loadWalletData()
+      } else {
+        throw new Error('Failed to transfer credits')
       }
-    } catch (err: any) {
-      setTransferError(err.message || 'Failed to transfer credits')
+    } catch (error: any) {
+      console.error('Error transferring credits:', error)
+      setError(error.message || 'Failed to transfer credits. Please try again.')
     } finally {
       setTransferring(false)
     }
   }
 
-  const getTransactionIcon = (transaction: Transaction) => {
-    switch (transaction.type) {
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
       case 'credit_purchase':
-        return <ArrowDownLeft className="h-4 w-4 text-green-500" />
+        return <CreditCard className="h-5 w-5 text-blue-500" />
       case 'credit_usage':
-        return <ArrowUpRight className="h-4 w-4 text-red-500" />
+        return <ArrowUpRight className="h-5 w-5 text-red-500" />
       case 'withdrawal':
-        return <Download className="h-4 w-4 text-blue-500" />
+        return <ArrowUpRight className="h-5 w-5 text-orange-500" />
+      case 'refund':
+        return <RefreshCw className="h-5 w-5 text-purple-500" />
       case 'credit_earning':
-        return <TrendingUp className="h-4 w-4 text-green-500" />
+        return <ArrowDownRight className="h-5 w-5 text-green-500" />
       case 'credit_to_fiat_conversion':
-        return <DollarSign className="h-4 w-4 text-purple-500" />
+        return <RefreshCw className="h-5 w-5 text-blue-500" />
       case 'credit_transfer_sent':
-        return <Send className="h-4 w-4 text-orange-500" />
+        return <Send className="h-5 w-5 text-red-500" />
       case 'credit_transfer_received':
-        return <ArrowDownLeft className="h-4 w-4 text-blue-500" />
+        return <ArrowDownRight className="h-5 w-5 text-green-500" />
       default:
-        return <CreditCard className="h-4 w-4 text-gray-500" />
+        return <Clock className="h-5 w-5 text-gray-500" />
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getTransactionStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />
@@ -322,7 +648,7 @@ const Wallet = () => {
       case 'cancelled':
         return <XCircle className="h-4 w-4 text-gray-500" />
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />
+        return null
     }
   }
 
@@ -336,14 +662,821 @@ const Wallet = () => {
     })
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'convert', label: 'Convert Credits' },
-    { id: 'withdraw', label: 'Withdraw Cash' },
-    { id: 'purchase', label: 'Buy Credits' },
-    { id: 'transfer', label: 'Transfer Credits' },
-    { id: 'transactions', label: 'Transactions' }
-  ]
+  const getFilteredTransactions = () => {
+    if (transactionType === 'all') {
+      return transactions
+    }
+    
+    return transactions.filter(transaction => transaction.type === transactionType)
+  }
+
+  const renderOverviewTab = () => (
+    <div className="space-y-6">
+      {/* Credit Balance Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Earned Credits
+            </h3>
+            <WalletIcon className="h-5 w-5 text-green-500" />
+          </div>
+          <div className="text-3xl font-bold text-green-600 mb-1">
+            {creditBalance.cashCredits}
+          </div>
+          <p className="text-sm text-gray-600">
+            Earned from content sales and referrals
+          </p>
+          <div className="mt-4 text-xs text-gray-500">
+            <span className="font-medium">Withdrawable</span> • Can be converted to cash
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Purchased Credits
+            </h3>
+            <CreditCard className="h-5 w-5 text-blue-500" />
+          </div>
+          <div className="text-3xl font-bold text-blue-600 mb-1">
+            {creditBalance.purchasedCredits}
+          </div>
+          <p className="text-sm text-gray-600">
+            Credits you've purchased
+          </p>
+          <div className="mt-4 text-xs text-gray-500">
+            <span className="font-medium">Non-withdrawable</span> • For platform use only
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Free Credits
+            </h3>
+            <Gift className="h-5 w-5 text-purple-500" />
+          </div>
+          <div className="text-3xl font-bold text-purple-600 mb-1">
+            {creditBalance.freeCredits}
+          </div>
+          <p className="text-sm text-gray-600">
+            Bonus credits from promotions
+          </p>
+          <div className="mt-4 text-xs text-gray-500">
+            <span className="font-medium">Non-withdrawable</span> • For posting referral jobs
+          </div>
+        </div>
+      </div>
+
+      {/* Cash Balance & Actions */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Cash Balance
+          </h3>
+          <DollarSign className="h-5 w-5 text-green-500" />
+        </div>
+        
+        <div className="text-3xl font-bold text-gray-900 mb-4">
+          ${walletStats.fiatBalance.toFixed(2)}
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Convert Credits to Cash
+            </h4>
+            <div className="flex space-x-2">
+              <div className="relative flex-1">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="number"
+                  value={conversionAmount || ''}
+                  onChange={(e) => setConversionAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                  min="0"
+                  max={creditBalance.cashCredits}
+                  placeholder="Amount"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              <button
+                onClick={handleConvertCredits}
+                disabled={conversionAmount <= 0 || conversionAmount > creditBalance.cashCredits || converting}
+                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                {converting ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span>Convert</span>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              1 credit = $1 in cash balance
+            </p>
+          </div>
+          
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Withdraw to PayPal
+            </h4>
+            <div className="flex space-x-2">
+              <div className="relative flex-1">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="number"
+                  value={withdrawalAmount || ''}
+                  onChange={(e) => setWithdrawalAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                  min="50"
+                  max={walletStats.fiatBalance}
+                  placeholder="Min $50"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              <button
+                onClick={handleWithdraw}
+                disabled={withdrawalAmount < 50 || withdrawalAmount > walletStats.fiatBalance || withdrawing}
+                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                {withdrawing ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUpRight className="h-4 w-4" />
+                )}
+                <span>Withdraw</span>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {paypalEmail ? `To: ${paypalEmail}` : 'Set your PayPal email first'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Earnings Stats
+        </h3>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Total Earned</div>
+            <div className="text-xl font-semibold text-gray-900">${walletStats.totalEarned.toFixed(2)}</div>
+          </div>
+          
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Total Spent</div>
+            <div className="text-xl font-semibold text-gray-900">${walletStats.totalSpent.toFixed(2)}</div>
+          </div>
+          
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Pending Earnings</div>
+            <div className="text-xl font-semibold text-gray-900">${walletStats.pendingEarnings.toFixed(2)}</div>
+          </div>
+          
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Available Credits</div>
+            <div className="text-xl font-semibold text-gray-900">
+              {creditBalance.cashCredits + creditBalance.purchasedCredits + creditBalance.freeCredits}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Transactions */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Recent Transactions
+          </h3>
+          <button
+            onClick={() => handleTabChange('history')}
+            className="text-green-600 hover:text-green-700 text-sm font-medium"
+          >
+            View All
+          </button>
+        </div>
+        
+        <div className="space-y-3">
+          {transactions.slice(0, 5).map((transaction) => (
+            <div key={transaction.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                  {getTransactionIcon(transaction.type)}
+                </div>
+                
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {transaction.description}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(transaction.created_at)}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <div className={`font-medium ${
+                  transaction.credits > 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {transaction.credits > 0 ? '+' : ''}{transaction.credits} credits
+                </div>
+                {getTransactionStatusIcon(transaction.status)}
+              </div>
+            </div>
+          ))}
+          
+          {transactions.length === 0 && (
+            <div className="text-center py-6">
+              <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No transactions yet</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderPurchaseTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Purchase Credits
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Credits can be used to purchase premium content, promote your posts, and more.
+        </p>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <CreditPurchaseCard
+            credits={20}
+            price={20}
+            onPurchase={handlePurchaseCredits}
+          />
+          
+          <CreditPurchaseCard
+            credits={50}
+            price={45}
+            onPurchase={handlePurchaseCredits}
+          />
+          
+          <CreditPurchaseCard
+            credits={100}
+            price={80}
+            bonusCredits={200}
+            popular={true}
+            onPurchase={handlePurchaseCredits}
+          />
+          
+          <CreditPurchaseCard
+            credits={200}
+            price={150}
+            onPurchase={handlePurchaseCredits}
+          />
+          
+          <CreditPurchaseCard
+            credits={500}
+            price={350}
+            onPurchase={handlePurchaseCredits}
+          />
+          
+          <CreditPurchaseCard
+            credits={1000}
+            price={650}
+            onPurchase={handlePurchaseCredits}
+          />
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          What You Can Do With Credits
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-3">
+              <Zap className="h-5 w-5 text-green-600" />
+            </div>
+            <h4 className="font-medium text-gray-900 mb-1">Promote Your Content</h4>
+            <p className="text-sm text-gray-600">
+              Boost visibility of your ideas, referral jobs, or tools with promotions.
+            </p>
+          </div>
+          
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+              <Lock className="h-5 w-5 text-blue-600" />
+            </div>
+            <h4 className="font-medium text-gray-900 mb-1">Access Premium Content</h4>
+            <p className="text-sm text-gray-600">
+              Unlock premium ideas, tools, and resources shared by other users.
+            </p>
+          </div>
+          
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-3">
+              <Megaphone className="h-5 w-5 text-purple-600" />
+            </div>
+            <h4 className="font-medium text-gray-900 mb-1">Post Referral Jobs</h4>
+            <p className="text-sm text-gray-600">
+              Create referral job listings to find people who can refer customers to your business.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderWithdrawTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Withdraw Funds
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <h4 className="text-base font-medium text-gray-900 mb-2">
+              Available Balance
+            </h4>
+            <div className="text-3xl font-bold text-gray-900 mb-1">
+              ${walletStats.fiatBalance.toFixed(2)}
+            </div>
+            <p className="text-sm text-gray-600">
+              This is your cash balance available for withdrawal
+            </p>
+          </div>
+          
+          <div>
+            <h4 className="text-base font-medium text-gray-900 mb-2">
+              Withdrawal Method
+            </h4>
+            <div className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-bold">P</span>
+              </div>
+              <div>
+                <div className="font-medium text-gray-900">PayPal</div>
+                <div className="text-sm text-gray-600">
+                  {paypalEmail || 'No PayPal email set'}
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPaypalModal(true)}
+                className="ml-auto text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                {paypalEmail ? 'Change' : 'Set Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-yellow-800 mb-1">Important Information</h4>
+              <ul className="text-sm text-yellow-700 space-y-1 list-disc pl-4">
+                <li>Minimum withdrawal amount is $50</li>
+                <li>A 15% fee is applied to all withdrawals</li>
+                <li>Withdrawals are processed within 3-5 business days</li>
+                <li>Only cash balance can be withdrawn (not credits)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div className="border-t border-gray-200 pt-6">
+          <h4 className="text-base font-medium text-gray-900 mb-3">
+            Request Withdrawal
+          </h4>
+          
+          <div className="flex space-x-3">
+            <div className="relative flex-1">
+              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="number"
+                value={withdrawalAmount || ''}
+                onChange={(e) => setWithdrawalAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                min="50"
+                max={walletStats.fiatBalance}
+                placeholder="Minimum $50"
+                className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg"
+              />
+            </div>
+            
+            <button
+              onClick={handleWithdraw}
+              disabled={withdrawalAmount < 50 || withdrawalAmount > walletStats.fiatBalance || withdrawing || !paypalEmail}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
+            >
+              {withdrawing ? (
+                <>
+                  <Loader className="h-5 w-5 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <ArrowUpRight className="h-5 w-5" />
+                  <span>Withdraw</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          {withdrawalAmount > 0 && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">Amount:</span>
+                <span className="font-medium">${withdrawalAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">Fee (15%):</span>
+                <span className="font-medium">-${(withdrawalAmount * 0.15).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-medium pt-1 border-t border-gray-200">
+                <span>You'll receive:</span>
+                <span className="text-green-600">${(withdrawalAmount * 0.85).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Pending Withdrawals
+        </h3>
+        
+        {transactions.filter(t => t.type === 'withdrawal' && t.status === 'pending').length > 0 ? (
+          <div className="space-y-3">
+            {transactions
+              .filter(t => t.type === 'withdrawal' && t.status === 'pending')
+              .map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-yellow-600" />
+                    </div>
+                    
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        Withdrawal to PayPal
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatDate(transaction.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="font-medium text-gray-900">
+                      ${transaction.amount.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-yellow-600">
+                      Processing
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No pending withdrawals</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const renderTransferTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Transfer Credits
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Send credits to other users on the platform. Only earned credits can be transferred.
+        </p>
+        
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start space-x-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-blue-800 mb-1">Available for Transfer</h4>
+              <p className="text-blue-700">
+                <span className="font-semibold">{creditBalance.cashCredits} earned credits</span> available to transfer
+              </p>
+              <p className="text-sm text-blue-600 mt-1">
+                Note: Purchased credits ({creditBalance.purchasedCredits}) and free credits ({creditBalance.freeCredits}) cannot be transferred.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => setShowTransferModal(true)}
+          disabled={creditBalance.cashCredits <= 0}
+          className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+        >
+          <Send className="h-5 w-5" />
+          <span>Transfer Credits</span>
+        </button>
+      </div>
+      
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Recent Transfers
+        </h3>
+        
+        {transactions.filter(t => t.type === 'credit_transfer_sent' || t.type === 'credit_transfer_received').length > 0 ? (
+          <div className="space-y-3">
+            {transactions
+              .filter(t => t.type === 'credit_transfer_sent' || t.type === 'credit_transfer_received')
+              .slice(0, 5)
+              .map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full ${
+                      transaction.type === 'credit_transfer_sent' 
+                        ? 'bg-red-100' 
+                        : 'bg-green-100'
+                    } flex items-center justify-center`}>
+                      {transaction.type === 'credit_transfer_sent' ? (
+                        <Send className="h-5 w-5 text-red-600" />
+                      ) : (
+                        <ArrowDownRight className="h-5 w-5 text-green-600" />
+                      )}
+                    </div>
+                    
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {transaction.description}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatDate(transaction.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className={`font-medium ${
+                    transaction.type === 'credit_transfer_sent' 
+                      ? 'text-red-600' 
+                      : 'text-green-600'
+                  }`}>
+                    {transaction.credits > 0 ? '+' : ''}{transaction.credits} credits
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <Send className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No transfers yet</p>
+          </div>
+        )}
+      </div>
+      
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          About Credit Transfers
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Info className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">Only Earned Credits</h4>
+              <p className="text-sm text-gray-600">
+                You can only transfer credits that you've earned on the platform. Purchased credits and free credits cannot be transferred.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <User className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">Recipient Identification</h4>
+              <p className="text-sm text-gray-600">
+                You can transfer credits using either the recipient's email address or their user ID.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Shield className="h-4 w-4 text-yellow-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">Security</h4>
+              <p className="text-sm text-gray-600">
+                Transfers are final and cannot be reversed. Make sure you're sending to the correct recipient.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderHistoryTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Transaction History
+        </h3>
+        
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setTransactionType('all')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              transactionType === 'all' 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setTransactionType('credit_purchase')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              transactionType === 'credit_purchase' 
+                ? 'bg-blue-100 text-blue-800' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Purchases
+          </button>
+          <button
+            onClick={() => setTransactionType('credit_earning')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              transactionType === 'credit_earning' 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Earnings
+          </button>
+          <button
+            onClick={() => setTransactionType('credit_usage')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              transactionType === 'credit_usage' 
+                ? 'bg-red-100 text-red-800' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Usage
+          </button>
+          <button
+            onClick={() => setTransactionType('withdrawal')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              transactionType === 'withdrawal' 
+                ? 'bg-orange-100 text-orange-800' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Withdrawals
+          </button>
+          <button
+            onClick={() => setTransactionType('credit_to_fiat_conversion')}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              transactionType === 'credit_to_fiat_conversion' 
+                ? 'bg-purple-100 text-purple-800' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Conversions
+          </button>
+        </div>
+        
+        <div className="space-y-3">
+          {getFilteredTransactions().length > 0 ? (
+            getFilteredTransactions().map((transaction) => (
+              <div key={transaction.id}>
+                <div 
+                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setExpandedTransaction(expandedTransaction === transaction.id ? null : transaction.id)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                      {getTransactionIcon(transaction.type)}
+                    </div>
+                    
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {transaction.description}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatDate(transaction.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <div className={`font-medium ${
+                      transaction.credits > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transaction.credits > 0 ? '+' : ''}{transaction.credits} credits
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {getTransactionStatusIcon(transaction.status)}
+                      <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${
+                        expandedTransaction === transaction.id ? 'rotate-180' : ''
+                      }`} />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Expanded details */}
+                {expandedTransaction === transaction.id && (
+                  <div className="mt-1 p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-gray-500">Transaction ID:</span>
+                        <span className="ml-2 text-gray-900">{transaction.id.substring(0, 8)}...</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Status:</span>
+                        <span className={`ml-2 ${
+                          transaction.status === 'completed' ? 'text-green-600' :
+                          transaction.status === 'pending' ? 'text-yellow-600' :
+                          transaction.status === 'failed' ? 'text-red-600' :
+                          'text-gray-600'
+                        }`}>
+                          {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Type:</span>
+                        <span className="ml-2 text-gray-900">
+                          {transaction.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Amount:</span>
+                        <span className="ml-2 text-gray-900">
+                          {transaction.amount ? `$${transaction.amount.toFixed(2)}` : 'N/A'}
+                        </span>
+                      </div>
+                      {transaction.payment_method && (
+                        <div>
+                          <span className="text-gray-500">Payment Method:</span>
+                          <span className="ml-2 text-gray-900">{transaction.payment_method}</span>
+                        </div>
+                      )}
+                      {transaction.withdrawal_method && (
+                        <div>
+                          <span className="text-gray-500">Withdrawal Method:</span>
+                          <span className="ml-2 text-gray-900">{transaction.withdrawal_method}</span>
+                        </div>
+                      )}
+                      {transaction.metadata && Object.keys(transaction.metadata).length > 0 && (
+                        <div className="col-span-2 mt-2">
+                          <span className="text-gray-500">Details:</span>
+                          <div className="mt-1 p-2 bg-gray-100 rounded text-xs font-mono overflow-x-auto">
+                            {JSON.stringify(transaction.metadata, null, 2)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-6">
+              <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No transactions found</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'purchase':
+        return renderPurchaseTab()
+      case 'withdraw':
+        return renderWithdrawTab()
+      case 'transfer':
+        return renderTransferTab()
+      case 'history':
+        return renderHistoryTab()
+      default:
+        return renderOverviewTab()
+    }
+  }
 
   if (loading) {
     return (
@@ -395,30 +1528,71 @@ const Wallet = () => {
               className="text-gray-600 mt-1"
               style={{ fontFamily: 'Inter' }}
             >
-              Manage your credits, cash balance, and transactions
+              Manage your credits, earnings, and withdrawals
             </p>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="bg-white border-b border-gray-200 px-4 lg:px-6">
-          <div className="max-w-6xl mx-auto">
-            <nav className="flex space-x-8 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-green-500 text-green-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  style={{ fontFamily: 'Inter' }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+          <div className="max-w-6xl mx-auto overflow-x-auto">
+            <div className="flex space-x-1 sm:space-x-4 whitespace-nowrap">
+              <button
+                onClick={() => handleTabChange('overview')}
+                className={`py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'overview'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter' }}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => handleTabChange('purchase')}
+                className={`py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'purchase'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter' }}
+              >
+                Purchase Credits
+              </button>
+              <button
+                onClick={() => handleTabChange('withdraw')}
+                className={`py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'withdraw'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter' }}
+              >
+                Withdraw
+              </button>
+              <button
+                onClick={() => handleTabChange('transfer')}
+                className={`py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'transfer'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter' }}
+              >
+                Transfer
+              </button>
+              <button
+                onClick={() => handleTabChange('history')}
+                className={`py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'history'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter' }}
+              >
+                History
+              </button>
+            </div>
           </div>
         </div>
 
@@ -430,7 +1604,7 @@ const Wallet = () => {
               <div className="mb-6">
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
                     <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{error}</p>
                   </div>
                 )}
@@ -443,780 +1617,29 @@ const Wallet = () => {
               </div>
             )}
 
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Balance Cards */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
-                          Cash Credits
-                        </p>
-                        <p className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
-                          {stats.currentCredits}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Convertible to cash
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <CreditCard className="h-6 w-6 text-green-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
-                          Free Credits
-                        </p>
-                        <p className="text-2xl font-bold text-purple-600" style={{ fontFamily: 'Montserrat' }}>
-                          {stats.freeCredits}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          For referral job posts only
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                        <CreditCard className="h-6 w-6 text-purple-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
-                          Cash Balance
-                        </p>
-                        <p className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Montserrat' }}>
-                          ${stats.fiatBalance.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Withdrawable to PayPal
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <DollarSign className="h-6 w-6 text-blue-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600" style={{ fontFamily: 'Inter' }}>
-                          Pending Earnings
-                        </p>
-                        <p className="text-2xl font-bold text-yellow-600" style={{ fontFamily: 'Montserrat' }}>
-                          {stats.pendingEarnings}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Credits being processed
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <Clock className="h-6 w-6 text-yellow-600" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                  <h3 
-                    className="text-lg font-semibold text-gray-900 mb-4"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Quick Actions
-                  </h3>
-                  <div className="grid md:grid-cols-4 gap-4">
-                    <button
-                      onClick={() => handleTabChange('convert')}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                          <DollarSign className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
-                            Convert Credits
-                          </h4>
-                          <p className="text-sm text-gray-600">Turn credits into cash</p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleTabChange('withdraw')}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Download className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
-                            Withdraw Cash
-                          </h4>
-                          <p className="text-sm text-gray-600">Transfer to PayPal</p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleTabChange('purchase')}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <CreditCard className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
-                            Buy Credits
-                          </h4>
-                          <p className="text-sm text-gray-600">Purchase more credits</p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleTabChange('transfer')}
-                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                          <Send className="h-5 w-5 text-orange-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900" style={{ fontFamily: 'Inter' }}>
-                            Transfer Credits
-                          </h4>
-                          <p className="text-sm text-gray-600">Send to other users</p>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Recent Transactions */}
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 
-                      className="text-lg font-semibold text-gray-900"
-                      style={{ fontFamily: 'Montserrat' }}
-                    >
-                      Recent Transactions
-                    </h3>
-                    <button
-                      onClick={() => handleTabChange('transactions')}
-                      className="text-green-600 hover:text-green-700 font-medium text-sm"
-                    >
-                      View All
-                    </button>
-                  </div>
-                  
-                  {transactions.slice(0, 5).length === 0 ? (
-                    <p className="text-gray-500 text-center py-8" style={{ fontFamily: 'Inter' }}>
-                      No transactions yet
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {transactions.slice(0, 5).map((transaction) => (
-                        <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            {getTransactionIcon(transaction)}
-                            <div>
-                              <p className="font-medium text-gray-900 text-sm" style={{ fontFamily: 'Inter' }}>
-                                {transaction.description}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {formatDate(transaction.created_at)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {getStatusIcon(transaction.status)}
-                            <span className="font-medium text-sm">
-                              {transaction.amount > 0 ? `$${transaction.amount}` : `${transaction.credits} credits`}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Convert Credits Tab */}
-            {activeTab === 'convert' && (
-              <div className="max-w-2xl mx-auto">
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-2xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Convert Credits to Cash
-                  </h2>
-                  
-                  <div className="mb-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-medium text-blue-800 mb-2">Conversion Rate</h3>
-                      <p className="text-blue-700 text-sm">
-                        1 Credit = $1.00 USD
-                      </p>
-                      <p className="text-blue-700 text-sm mt-2">
-                        <strong>Note:</strong> Only cash credits can be converted to cash. Free credits cannot be converted.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Credits to Convert
-                    </label>
-                    <input
-                      type="number"
-                      value={convertAmount}
-                      onChange={(e) => setConvertAmount(e.target.value)}
-                      max={stats.currentCredits}
-                      min="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="Enter amount"
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                      <span>Available Cash Credits: {stats.currentCredits}</span>
-                      <span>Free Credits: {stats.freeCredits} (not convertible)</span>
-                    </div>
-                  </div>
-
-                  {convertAmount && (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between text-sm">
-                        <span>Credits to convert:</span>
-                        <span>{convertAmount}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-medium">
-                        <span>Cash you'll receive:</span>
-                        <span>${parseFloat(convertAmount || '0').toFixed(2)}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleConvertCredits}
-                    disabled={!convertAmount || converting || parseInt(convertAmount) > stats.currentCredits}
-                    className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
-                  >
-                    {converting ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        <span>Converting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <DollarSign className="h-4 w-4" />
-                        <span>Convert to Cash</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Withdraw Cash Tab */}
-            {activeTab === 'withdraw' && (
-              <div className="max-w-2xl mx-auto space-y-6">
-                {/* Withdrawal Settings */}
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-2xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Withdrawal Settings
-                  </h2>
-                  
-                  {/* PayPal Email Success/Error Messages */}
-                  {(paypalError || paypalSuccess) && (
-                    <div className="mb-6">
-                      {paypalError && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                          <AlertCircle className="h-5 w-5 text-red-500" />
-                          <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{paypalError}</p>
-                        </div>
-                      )}
-                      {paypalSuccess && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <p className="text-green-700" style={{ fontFamily: 'Inter' }}>{paypalSuccess}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      PayPal Email Address
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type={showPaypalEmail ? 'text' : 'password'}
-                        value={paypalEmail}
-                        onChange={(e) => setPaypalEmail(e.target.value)}
-                        className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="your-paypal@email.com"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPaypalEmail(!showPaypalEmail)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPaypalEmail ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      This email will be used for all withdrawal payments
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={handleSavePayPalEmail}
-                    disabled={!paypalEmail.trim() || savingPaypal}
-                    className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
-                  >
-                    {savingPaypal ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span>Save PayPal Email</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Withdrawal Form */}
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-2xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Request Withdrawal
-                  </h2>
-                  
-                  <div className="mb-6">
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <h3 className="font-medium text-yellow-800 mb-2">Processing Fee</h3>
-                      <p className="text-yellow-700 text-sm">
-                        A 15% processing fee applies to all withdrawals. This covers payment processing and platform costs.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Withdrawal Amount
-                    </label>
-                    <input
-                      type="number"
-                      value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
-                      max={stats.fiatBalance}
-                      min="1"
-                      step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="Enter amount"
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Available: ${stats.fiatBalance.toFixed(2)}
-                    </p>
-                  </div>
-
-                  {withdrawAmount && (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between text-sm">
-                        <span>Withdrawal amount:</span>
-                        <span>${parseFloat(withdrawAmount || '0').toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                
-                        <span>Processing fee (15%):</span>
-                        <span>${(parseFloat(withdrawAmount || '0') * 0.15).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-gray-200">
-                        <span>You'll receive:</span>
-                        <span>${(parseFloat(withdrawAmount || '0') * 0.85).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mb-6">
-                    <div className="flex items-center space-x-2">
-                      <Mail className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-700">
-                        {paypalEmail ? 
-                          `Funds will be sent to: ${paypalEmail.substring(0, 3)}...${paypalEmail.substring(paypalEmail.indexOf('@'))}` : 
-                          'No PayPal email set. Please add one above.'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleWithdrawal}
-                    disabled={!withdrawAmount || withdrawing || !paypalEmail || parseFloat(withdrawAmount) > stats.fiatBalance}
-                    className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
-                  >
-                    {withdrawing ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4" />
-                        <span>Request Withdrawal</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Buy Credits Tab */}
-            {activeTab === 'purchase' && (
-              <div className="max-w-2xl mx-auto">
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-2xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Buy Credits
-                  </h2>
-                  
-                  <div className="mb-8">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-medium text-blue-800 mb-2">Credit Pricing</h3>
-                      <p className="text-blue-700 text-sm">
-                        1 Credit = $1.00 USD. Credits can be used for posting referral jobs, promoting content, and accessing premium ideas.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    {/* 20 Credits Package */}
-                    <div className="border border-gray-200 hover:border-green-300 rounded-lg p-4 text-center cursor-pointer transition-colors bg-black text-white flex flex-col">
-                      <div className="flex-grow">
-                        <h3 className="text-xl font-bold mb-1">20 Credits</h3>
-                        <p className="text-green-500 font-semibold mb-3">$20.00</p>
-                      </div>
-                      <div className="mt-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            onClick={() => {
-                              // Space for PayPal URL
-                            }}
-                            className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                          >
-                            Buy with PayPal
-                          </button>
-                          <button 
-                            onClick={() => {
-                              // Space for Creem.io URL
-                            }}
-                            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                          >
-                            Pay with Card
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 50 Credits Package */}
-                    <div className="border border-gray-200 hover:border-green-300 rounded-lg p-4 text-center cursor-pointer transition-colors bg-black text-white flex flex-col">
-                      <div className="flex-grow">
-                        <h3 className="text-xl font-bold mb-1">50 Credits</h3>
-                        <p className="text-green-500 font-semibold mb-1">$45.00</p>
-                        <p className="text-xs text-gray-400 mb-3">Save $5.00</p>
-                      </div>
-                      <div className="mt-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            onClick={() => {
-                              // Space for PayPal URL
-                            }}
-                            className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                          >
-                            Buy with PayPal
-                          </button>
-                          <button 
-                            onClick={() => {
-                              // Space for Creem.io URL
-                            }}
-                            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                          >
-                            Pay with Card
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 100 Credits Package */}
-                    <div className="border-2 border-green-500 rounded-lg p-4 text-center cursor-pointer relative bg-black text-white flex flex-col">
-                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                        POPULAR
-                      </div>
-                      <div className="flex-grow">
-                        <h3 className="text-xl font-bold mb-1">100 Credits</h3>
-                        <p className="text-green-500 font-semibold mb-1">$85.00</p>
-                        <p className="text-xs text-gray-400 mb-1">Save $15.00</p>
-                        <p className="text-xs text-yellow-400 mb-3">Get an additional 200 FREE credits for referral job posts!</p>
-                      </div>
-                      <div className="mt-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            onClick={() => {
-                              // Space for PayPal URL
-                            }}
-                            className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                          >
-                            Buy with PayPal
-                          </button>
-                          <button 
-                            onClick={() => {
-                              // Space for Creem.io URL
-                            }}
-                            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                          >
-                            Pay with Card
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Transfer Credits Tab */}
-            {activeTab === 'transfer' && (
-              <div className="max-w-2xl mx-auto">
-                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-2xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Transfer Credits to Another User
-                  </h2>
-                  
-                  {/* Transfer Credits Success/Error Messages */}
-                  {(transferError || transferSuccess) && (
-                    <div className="mb-6">
-                      {transferError && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                          <AlertCircle className="h-5 w-5 text-red-500" />
-                          <p className="text-red-700" style={{ fontFamily: 'Inter' }}>{transferError}</p>
-                        </div>
-                      )}
-                      {transferSuccess && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <p className="text-green-700" style={{ fontFamily: 'Inter' }}>{transferSuccess}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="mb-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-medium text-blue-800 mb-2">About Credit Transfers</h3>
-                      <p className="text-blue-700 text-sm">
-                        You can transfer your cash credits to other users. Free credits cannot be transferred.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Recipient Email or User ID
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={recipientIdentifier}
-                        onChange={(e) => setRecipientIdentifier(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Email address or user ID"
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Enter the email address or user ID of the recipient
-                    </p>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Amount to Transfer
-                    </label>
-                    <input
-                      type="number"
-                      value={transferAmount}
-                      onChange={(e) => setTransferAmount(e.target.value)}
-                      max={stats.currentCredits}
-                      min="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="Enter amount"
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                      <span>Available Cash Credits: {stats.currentCredits}</span>
-                      <span>Free Credits: {stats.freeCredits} (not transferable)</span>
-                    </div>
-                  </div>
-
-                  {transferAmount && recipientIdentifier && (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between text-sm">
-                        <span>Credits to transfer:</span>
-                        <span>{transferAmount}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Recipient:</span>
-                        <span>{recipientIdentifier}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleTransferCredits}
-                    disabled={!transferAmount || !recipientIdentifier || transferring || parseInt(transferAmount) > stats.currentCredits}
-                    className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
-                  >
-                    {transferring ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        <span>Transferring...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        <span>Transfer Credits</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Transactions Tab */}
-            {activeTab === 'transactions' && (
-              <div>
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                  <h2 
-                    className="text-xl font-bold text-gray-900 mb-6"
-                    style={{ fontFamily: 'Montserrat' }}
-                  >
-                    Transaction History
-                  </h2>
-                  
-                  {transactions.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8" style={{ fontFamily: 'Inter' }}>
-                      No transactions yet
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Date
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Description
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Amount
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Method
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {transactions.map((transaction) => (
-                            <tr key={transaction.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {formatDate(transaction.created_at)}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-900">
-                                {transaction.description}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center space-x-2">
-                                  {getTransactionIcon(transaction)}
-                                  <span className="text-sm text-gray-900">
-                                    {transaction.type.replace(/_/g, ' ')}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {transaction.type === 'credit_purchase' || transaction.type === 'withdrawal' ? (
-                                  <span className="font-medium text-gray-900">${transaction.amount}</span>
-                                ) : (
-                                  <span className={`font-medium ${transaction.credits > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {transaction.credits > 0 ? '+' : ''}{transaction.credits} credits
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center space-x-2">
-                                  {getStatusIcon(transaction.status)}
-                                  <span className="text-sm text-gray-900 capitalize">
-                                    {transaction.status}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {transaction.withdrawal_method ? (
-                                  <span className="capitalize">{transaction.withdrawal_method}</span>
-                                ) : transaction.payment_method ? (
-                                  <span className="capitalize">{transaction.payment_method}</span>
-                                ) : (
-                                  <span>-</span>
-                                )}
-                                {transaction.withdrawal_method === 'paypal' && transaction.withdrawal_details?.paypal_email && (
-                                  <span className="block text-xs text-gray-400">
-                                    {transaction.withdrawal_details.paypal_email.substring(0, 3)}...{transaction.withdrawal_details.paypal_email.substring(transaction.withdrawal_details.paypal_email.indexOf('@'))}
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Tab Content */}
+            {renderActiveTab()}
           </div>
         </div>
       </div>
+
+      {/* PayPal Email Modal */}
+      <PayPalEmailModal
+        isOpen={showPaypalModal}
+        onClose={() => setShowPaypalModal(false)}
+        onSave={handleSavePaypalEmail}
+        currentEmail={paypalEmail}
+        saving={savingPaypalEmail}
+      />
+
+      {/* Transfer Credits Modal */}
+      <TransferCreditsModal
+        isOpen={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        onTransfer={handleTransferCredits}
+        availableCredits={creditBalance.cashCredits}
+        transferring={transferring}
+      />
 
       {sidebarOpen && (
         <div 

@@ -261,7 +261,7 @@ const IdeaDetail = () => {
               getUserCredits(user.id)
             ])
             setHasPurchased(purchased)
-            setUserCredits(credits.cashCredits + credits.freeCredits)
+            setUserCredits(credits.cashCredits + credits.purchasedCredits)
             setCheckingPurchase(false)
           } else {
             setCheckingPurchase(false)
@@ -293,6 +293,12 @@ const IdeaDetail = () => {
       case 'referral-jobs':
         navigate('/dashboard/referral-jobs')
         break
+      case 'business-pages':
+        navigate('/dashboard/business-pages')
+        break
+      case 'community':
+        navigate('/dashboard/community')
+        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break
@@ -301,9 +307,6 @@ const IdeaDetail = () => {
         break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')

@@ -18,6 +18,7 @@ interface WelcomeBlockProps {
 const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
   const [stats, setStats] = useState({
     cashCredits: 0,
+    purchasedCredits: 0,
     freeCredits: 0,
     views: 0,
     referrals: 0,
@@ -65,6 +66,7 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
       // Update stats with real data
       setStats({
         cashCredits: credits.cashCredits,
+        purchasedCredits: credits.purchasedCredits,
         freeCredits: credits.freeCredits,
         views: totalViews,
         referrals: totalReferrals,
@@ -116,7 +118,7 @@ const WelcomeBlock: React.FC<WelcomeBlockProps> = ({ user }) => {
                 </span>
               </div>
               <p className="text-xl font-bold text-green-600" style={{ fontFamily: 'Montserrat' }}>
-                💰 {stats.cashCredits}
+                💰 {stats.cashCredits + stats.purchasedCredits}
                 {stats.freeCredits > 0 && (
                   <span className="text-xs ml-1 text-purple-600">+{stats.freeCredits} free</span>
                 )}

@@ -13,6 +13,7 @@ export interface UserProfile {
   updated_at: string
   credits?: number
   free_credits?: number
+  purchased_credits?: number
   fiat_balance?: number
   paypal_email?: string
   // Contact and social media fields
@@ -285,6 +286,7 @@ export interface Promotion {
 
 export interface WalletStats {
   currentCredits: number
+  purchasedCredits: number
   freeCredits: number
   fiatBalance: number
   totalEarned: number
@@ -294,6 +296,7 @@ export interface WalletStats {
 
 export interface CreditBalance {
   cashCredits: number
+  purchasedCredits: number
   freeCredits: number
 }
 
@@ -912,11 +915,11 @@ export const createReferralJobWithPayment = async (jobData: CreateReferralJobDat
   // Check if user has enough credits (combined free and cash)
   const { data: userProfile } = await supabase
     .from('user_profiles')
-    .select('credits, free_credits')
+    .select('credits, free_credits, purchased_credits')
     .eq('id', jobData.user_id)
     .single()
 
-  const totalCredits = (userProfile?.credits || 0) + (userProfile?.free_credits || 0)
+  const totalCredits = (userProfile?.credits || 0) + (userProfile?.free_credits || 0) + (userProfile?.purchased_credits || 0)
   
   if (!userProfile || totalCredits < REFERRAL_JOB_POSTING_COST) {
     throw new Error('Insufficient credits to post referral job')
@@ -1541,17 +1544,18 @@ export const subscribeToCommunityPosts = (callback: (payload: any) => void) => {
 export const getUserCredits = async (userId: string): Promise<CreditBalance> => {
   const { data, error } = await supabase
     .from('user_profiles')
-    .select('credits, free_credits')
+    .select('credits, free_credits, purchased_credits')
     .eq('id', userId)
     .single()
 
   if (error) {
     console.error('Error fetching user credits:', error)
-    return { cashCredits: 0, freeCredits: 0 }
+    return { cashCredits: 0, purchasedCredits: 0, freeCredits: 0 }
   }
 
   return {
     cashCredits: data?.credits || 0,
+    purchasedCredits: data?.purchased_credits || 0,
     freeCredits: data?.free_credits || 0
   }
 }
@@ -1577,7 +1581,7 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
     // Get user profile for current balances
     const { data: userProfile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('credits, free_credits, fiat_balance')
+      .select('credits, free_credits, purchased_credits, fiat_balance')
       .eq('id', userId)
       .single()
 
@@ -1614,6 +1618,7 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
 
     return {
       currentCredits: userProfile?.credits || 0,
+      purchasedCredits: userProfile?.purchased_credits || 0,
       freeCredits: userProfile?.free_credits || 0,
       fiatBalance: Number(userProfile?.fiat_balance) || 0,
       totalEarned,
@@ -1625,6 +1630,7 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
     // Return default stats in case of error
     return {
       currentCredits: 0,
+      purchasedCredits: 0,
       freeCredits: 0,
       fiatBalance: 0,
       totalEarned: 0,
@@ -1636,51 +1642,25 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
 
 export const transferCreditsToFiatBalance = async (userId: string, credits: number): Promise<boolean> => {
   try {
-    // Check if user has enough credits
+    // Check if user has enough earned credits (not purchased or free)
     const { data: userProfile } = await supabase
       .from('user_profiles')
-      .select('credits, fiat_balance')
+      .select('credits')
       .eq('id', userId)
       .single()
 
     if (!userProfile || (userProfile.credits || 0) < credits) {
-      throw new Error('Insufficient credits for conversion')
+      throw new Error('Insufficient earned credits for conversion. Only earned credits can be converted to cash.')
     }
 
-    // Convert credits to fiat (1 credit = $1)
-    const fiatAmount = credits
-    const newCredits = (userProfile.credits || 0) - credits
-    const newFiatBalance = Number(userProfile.fiat_balance || 0) + fiatAmount
+    // Call the RPC function to handle the conversion
+    const { error } = await supabase.rpc('transfer_credits_to_fiat_balance', {
+      p_user_id: userId,
+      p_credits: credits
+    })
 
-    // Update user profile
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        credits: newCredits,
-        fiat_balance: newFiatBalance
-      })
-      .eq('id', userId)
-
-    if (updateError) {
-      throw new Error(updateError.message)
-    }
-
-    // Create transaction record
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        type: 'credit_to_fiat_conversion',
-        amount: fiatAmount,
-        credits: -credits,
-        currency: 'USD',
-        description: `Converted ${credits} credits to $${fiatAmount.toFixed(2)} cash`,
-        status: 'completed'
-      })
-
-    if (transactionError) {
-      console.error('Error creating transaction record:', transactionError)
-      // Don't throw here as the main operation succeeded
+    if (error) {
+      throw new Error(error.message)
     }
 
     return true
@@ -1692,6 +1672,11 @@ export const transferCreditsToFiatBalance = async (userId: string, credits: numb
 
 export const processWithdrawal = async (userId: string, amount: number): Promise<boolean> => {
   try {
+    // Validate minimum withdrawal amount
+    if (amount < 50) {
+      throw new Error('Minimum withdrawal amount is $50')
+    }
+
     // Get user profile to check balance and PayPal email
     const { data: userProfile } = await supabase
       .from('user_profiles')
@@ -1712,7 +1697,7 @@ export const processWithdrawal = async (userId: string, amount: number): Promise
     }
 
     // Use the database function to process withdrawal with PayPal details
-    const { data, error } = await supabase.rpc('process_withdrawal_with_paypal', {
+    const { error } = await supabase.rpc('process_withdrawal_with_paypal', {
       p_user_id: userId,
       p_amount: amount,
       p_paypal_email: userProfile.paypal_email
@@ -1754,6 +1739,19 @@ export const purchaseContent = async (
   contentType: string,
   price: number
 ): Promise<boolean> => {
+  // Check if user has enough credits (combined purchased and earned)
+  const { data: userProfile } = await supabase
+    .from('user_profiles')
+    .select('credits, purchased_credits')
+    .eq('id', buyerId)
+    .single()
+
+  const totalCredits = (userProfile?.credits || 0) + (userProfile?.purchased_credits || 0)
+  
+  if (!userProfile || totalCredits < price) {
+    throw new Error(`Insufficient credits to purchase content. You need ${price} credits but only have ${totalCredits} total credits.`)
+  }
+
   const { data, error } = await supabase.rpc('purchase_content', {
     p_buyer_user_id: buyerId,
     p_creator_user_id: sellerId,
@@ -1822,11 +1820,13 @@ export const createPromotionAd = async (promotionData: CreatePromotionData): Pro
     // Check if user has enough credits
     const { data: userProfile } = await supabase
       .from('user_profiles')
-      .select('credits')
+      .select('credits, purchased_credits')
       .eq('id', promotionData.user_id)
       .single()
 
-    if (!userProfile || (userProfile.credits || 0) < promotionData.cost_credits) {
+    const totalCredits = (userProfile?.credits || 0) + (userProfile?.purchased_credits || 0)
+    
+    if (!userProfile || totalCredits < promotionData.cost_credits) {
       throw new Error('Insufficient credits to create promotion')
     }
 
@@ -1836,12 +1836,26 @@ export const createPromotionAd = async (promotionData: CreatePromotionData): Pro
     endDate.setDate(endDate.getDate() + promotionData.duration_days)
 
     // Create promotion and deduct credits
-    const newCredits = (userProfile.credits || 0) - promotionData.cost_credits
+    // Prioritize using purchased credits first
+    let purchasedCreditsUsed = 0
+    let earnedCreditsUsed = 0
+    
+    if ((userProfile.purchased_credits || 0) >= promotionData.cost_credits) {
+      // Use only purchased credits
+      purchasedCreditsUsed = promotionData.cost_credits
+    } else {
+      // Use all available purchased credits and some earned credits
+      purchasedCreditsUsed = userProfile.purchased_credits || 0
+      earnedCreditsUsed = promotionData.cost_credits - purchasedCreditsUsed
+    }
 
     // Update user credits
     const { error: updateError } = await supabase
       .from('user_profiles')
-      .update({ credits: newCredits })
+      .update({ 
+        purchased_credits: (userProfile.purchased_credits || 0) - purchasedCreditsUsed,
+        credits: (userProfile.credits || 0) - earnedCreditsUsed
+      })
       .eq('id', promotionData.user_id)
 
     if (updateError) {
@@ -1882,7 +1896,9 @@ export const createPromotionAd = async (promotionData: CreatePromotionData): Pro
         metadata: {
           promotion_id: promotion.id,
           content_id: promotionData.content_id,
-          content_type: promotionData.content_type
+          content_type: promotionData.content_type,
+          purchased_credits_used: purchasedCreditsUsed,
+          earned_credits_used: earnedCreditsUsed
         }
       })
 
@@ -1910,7 +1926,7 @@ export const transferCredits = async (
       throw new Error('Transfer amount must be greater than zero')
     }
 
-    // Check if sender has enough credits
+    // Check if sender has enough earned credits (only earned credits can be transferred)
     const { data: senderProfile } = await supabase
       .from('user_profiles')
       .select('credits')
@@ -1918,11 +1934,11 @@ export const transferCredits = async (
       .single()
 
     if (!senderProfile || (senderProfile.credits || 0) < amount) {
-      throw new Error('Insufficient credits for transfer')
+      throw new Error('Insufficient earned credits for transfer. Only earned credits can be transferred.')
     }
 
     // Call the RPC function to handle the transfer
-    const { data, error } = await supabase.rpc('transfer_user_credits', {
+    const { error } = await supabase.rpc('transfer_user_credits', {
       p_sender_id: senderId,
       p_recipient_identifier: recipientIdentifier,
       p_amount: amount
