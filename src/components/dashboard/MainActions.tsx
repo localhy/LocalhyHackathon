@@ -1,5 +1,5 @@
 import React from 'react'
-import { Lightbulb, Megaphone, Wrench, ArrowRight, Building, Users } from 'lucide-react'
+import { Lightbulb, Megaphone, Wrench, ArrowRight } from 'lucide-react'
 
 interface MainActionsProps {
   onNavigate: (page: string) => void
@@ -32,32 +32,6 @@ const MainActions: React.FC<MainActionsProps> = ({ onNavigate }) => {
       bgColor: 'bg-blue-50',
       iconColor: 'text-blue-500',
       buttonColor: 'bg-blue-500 hover:bg-blue-600'
-    },
-    {
-      id: 'business-pages',
-      icon: Building,
-      title: 'Business Pages',
-      description: 'Create a page for your business or explore local businesses in your area.',
-      primaryAction: 'Explore Businesses',
-      secondaryAction: 'Create Business Page',
-      primaryPage: 'business-pages',
-      secondaryPage: '/dashboard/create-business-page',
-      bgColor: 'bg-yellow-50',
-      iconColor: 'text-yellow-500',
-      buttonColor: 'bg-yellow-500 hover:bg-yellow-600'
-    },
-    {
-      id: 'community',
-      icon: Users,
-      title: 'Community',
-      description: 'Connect with your local community, join discussions, and stay updated.',
-      primaryAction: 'Join Community',
-      secondaryAction: 'Create Post',
-      primaryPage: 'community',
-      secondaryPage: 'community',
-      bgColor: 'bg-indigo-50',
-      iconColor: 'text-indigo-500',
-      buttonColor: 'bg-indigo-500 hover:bg-indigo-600'
     },
     {
       id: 'starter-tools',
