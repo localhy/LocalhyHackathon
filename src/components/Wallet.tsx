@@ -29,6 +29,7 @@ import {
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { 
   getUserCredits, 
   getUserTransactions, 
