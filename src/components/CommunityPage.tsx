@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Users, Newspaper, ShoppingBag, Calendar, UserPlus, MessageCircle, Search, Filter, Plus, User, Heart, Share2, MapPin, Clock, ChevronDown, Image, X, Send, Loader, AlertCircle } from 'lucide-react'
+import { Users, Newspaper, ShoppingBag, Calendar, UserPlus, MessageCircle, Search, Filter, Plus, User, Heart, Share2, MapPin, Clock, ChevronDown, Image, X, Send, Loader, AlertCircle, Building } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
@@ -468,7 +468,7 @@ const InviteNeighborsSection = () => (
             </div>
             <div className="flex-1">
               <p className="text-sm text-gray-700">1301 Throckmorton St Apt {i}</p>
-              <p className="text-xs text-gray-500">&lt;1 mi away</p>
+              <p className="text-xs text-gray-500"><1 mi away</p>
             </div>
             <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" />
           </div>
