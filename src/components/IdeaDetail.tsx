@@ -8,7 +8,7 @@ import {
   getIdeaById, 
   likeIdea, 
   bookmarkIdea, 
-  getIdeaComments, 
+  getCommentsByContent, 
   createComment, 
   likeComment,
   hasUserPurchasedContent,
@@ -249,7 +249,7 @@ const IdeaDetail = () => {
           setIdea(fetchedIdea)
           
           // Load comments
-          const ideaComments = await getIdeaComments(fetchedIdea.id)
+          const ideaComments = await getCommentsByContent(fetchedIdea.id, 'idea', user?.id)
           setComments(ideaComments)
           
           // Check if user has purchased this content (if it's paid)
@@ -260,7 +260,7 @@ const IdeaDetail = () => {
               getUserCredits(user.id)
             ])
             setHasPurchased(purchased)
-            setUserCredits(credits)
+            setUserCredits(credits.cashCredits + credits.freeCredits)
             setCheckingPurchase(false)
           } else {
             setCheckingPurchase(false)
@@ -392,7 +392,8 @@ const IdeaDetail = () => {
     setSubmittingComment(true)
     try {
       const comment = await createComment({
-        idea_id: idea.id,
+        content_id: idea.id,
+        content_type: 'idea',
         user_id: user.id,
         content: newComment.trim()
       })
