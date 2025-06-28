@@ -4,7 +4,7 @@ import { Wallet as WalletIcon, CreditCard, DollarSign, ArrowRight, ArrowLeft, Lo
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserCredits, getUserTransactions, transferCreditsToFiatBalance, processWithdrawalWithPaypal, type Transaction } from '../lib/database'
+import { getUserCredits, getUserTransactions, transferCreditsToFiatBalance, processWithdrawalWithPaypal, transferUserCredits, type Transaction } from '../lib/database'
 import { supabase } from '../lib/supabase'
 
 // Credit package options
@@ -45,12 +45,19 @@ const Wallet = () => {
   const [withdrawAmount, setWithdrawAmount] = useState(0)
   const [paypalEmail, setPaypalEmail] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
+  
+  // Transfer states
+  const [transferRecipient, setTransferRecipient] = useState('')
+  const [transferAmount, setTransferAmount] = useState(0)
+  const [transferring, setTransferring] = useState(false)
+  const [transferError, setTransferError] = useState('')
+  const [transferSuccess, setTransferSuccess] = useState('')
 
   useEffect(() => {
     // Get active tab from URL if present
     const searchParams = new URLSearchParams(location.search)
     const tab = searchParams.get('tab')
-    if (tab && ['balance', 'purchase', 'convert', 'withdraw', 'history'].includes(tab)) {
+    if (tab && ['balance', 'purchase', 'convert', 'withdraw', 'history', 'transfer'].includes(tab)) {
       setActiveTab(tab)
     }
     
@@ -139,6 +146,8 @@ const Wallet = () => {
     // Clear any error/success messages when changing tabs
     setError('')
     setSuccess('')
+    setTransferError('')
+    setTransferSuccess('')
   }
 
   const handleConvertCredits = async () => {
@@ -216,6 +225,46 @@ const Wallet = () => {
       setError(error.message || 'Failed to process withdrawal. Please try again.')
     } finally {
       setWithdrawing(false)
+    }
+  }
+  
+  const handleTransferCredits = async () => {
+    if (!user || transferring || transferAmount <= 0 || !transferRecipient) return
+    
+    // Validate transfer amount
+    if (transferAmount > credits.cashCredits) {
+      setTransferError(`You can only transfer earned credits. You have ${credits.cashCredits} earned credits available.`)
+      return
+    }
+    
+    // Validate recipient
+    if (!transferRecipient.trim()) {
+      setTransferError('Please enter a recipient email or user ID.')
+      return
+    }
+    
+    setTransferring(true)
+    setTransferError('')
+    setTransferSuccess('')
+    
+    try {
+      const result = await transferUserCredits(user.id, transferRecipient, transferAmount)
+      
+      if (result) {
+        setTransferSuccess(`Successfully transferred ${transferAmount} credits to ${transferRecipient}.`)
+        setTransferAmount(0)
+        setTransferRecipient('')
+        
+        // Refresh wallet data
+        await loadWalletData()
+      } else {
+        throw new Error('Failed to transfer credits')
+      }
+    } catch (error: any) {
+      console.error('Error transferring credits:', error)
+      setTransferError(error.message || 'Failed to transfer credits. Please try again.')
+    } finally {
+      setTransferring(false)
     }
   }
 
@@ -387,13 +436,22 @@ const Wallet = () => {
             </div>
           </div>
           
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
             <button
               onClick={() => handleTabChange('purchase')}
               className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
             >
               <CreditCard className="h-4 w-4" />
               <span>Buy Credits</span>
+            </button>
+            
+            <button
+              onClick={() => handleTabChange('transfer')}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+              disabled={credits.cashCredits <= 0}
+            >
+              <Send className="h-4 w-4" />
+              <span>Transfer</span>
             </button>
             
             <button
@@ -639,6 +697,115 @@ const Wallet = () => {
                 <span>Free credits can only be used for posting referral jobs</span>
               </li>
             </ul>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderTransferTab = () => {
+    return (
+      <div className="space-y-6">
+        {/* Current Balance */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <h3 
+            className="text-lg font-semibold text-gray-900 mb-4"
+            style={{ fontFamily: 'Montserrat' }}
+          >
+            Transfer Credits to Another User
+          </h3>
+          
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Send className="h-4 w-4 text-yellow-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-yellow-800 mb-1">How transfers work:</h4>
+                <ul className="space-y-1 text-sm text-yellow-700">
+                  <li>• You can only transfer earned credits (not purchased or free credits)</li>
+                  <li>• Enter the recipient's email address or user ID</li>
+                  <li>• Transfers are instant and cannot be reversed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Earned Credits
+                </label>
+                <div className="bg-gray-100 p-3 rounded-lg">
+                  <span className="font-bold text-gray-900">{credits.cashCredits}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recipient Email or User ID
+                </label>
+                <input
+                  type="text"
+                  value={transferRecipient}
+                  onChange={(e) => setTransferRecipient(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                  placeholder="recipient@example.com"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount to Transfer
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max={credits.cashCredits}
+                    value={transferAmount || ''}
+                    onChange={(e) => setTransferAmount(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                    placeholder="Enter amount"
+                  />
+                </div>
+              </div>
+              
+              {transferError && (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <p className="text-red-700 text-sm">{transferError}</p>
+                </div>
+              )}
+              
+              {transferSuccess && (
+                <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <p className="text-green-700 text-sm">{transferSuccess}</p>
+                </div>
+              )}
+              
+              <button
+                onClick={handleTransferCredits}
+                disabled={transferring || transferAmount <= 0 || transferAmount > credits.cashCredits || !transferRecipient}
+                className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+              >
+                {transferring ? (
+                  <>
+                    <Loader className="h-4 w-4 animate-spin" />
+                    <span>Transferring...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    <span>Transfer Credits</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -954,6 +1121,8 @@ const Wallet = () => {
         return renderConvertTab()
       case 'withdraw':
         return renderWithdrawTab()
+      case 'transfer':
+        return renderTransferTab()
       case 'history':
         return renderHistoryTab()
       default:
@@ -1042,6 +1211,18 @@ const Wallet = () => {
                 style={{ fontFamily: 'Inter' }}
               >
                 Buy Credits
+              </button>
+              
+              <button
+                onClick={() => handleTabChange('transfer')}
+                className={`py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'transfer'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                style={{ fontFamily: 'Inter' }}
+              >
+                Transfer
               </button>
               
               <button
