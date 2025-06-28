@@ -12,9 +12,13 @@ const BusinessPagePrompt: React.FC<BusinessPagePromptProps> = ({ user, className
   const isBusinessOwner = user?.user_metadata?.user_type === 'business-owner'
 
   const handleCreateBusinessPage = () => {
-    // For now, navigate to profile page as a placeholder
-    // In the future, this would navigate to a business page creation flow
-    navigate('/dashboard/profile')
+    if (isBusinessOwner) {
+      // If user is a business owner, navigate to create business page form
+      navigate('/dashboard/create-business-page')
+    } else {
+      // If user is not a business owner, navigate to business pages list
+      navigate('/dashboard/business-pages')
+    }
   }
 
   return (
