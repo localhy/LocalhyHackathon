@@ -31,6 +31,7 @@ import {
   type Comment
 } from '../../lib/database'
 import { supabase } from '../../lib/supabase'
+import CommunityRightColumn from './CommunityRightColumn'
 
 // Share modal component
 const ShareModal = ({ post, isVisible, onClose }: { post: CommunityPost | null, isVisible: boolean, onClose: () => void }) => {
@@ -514,335 +515,345 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="max-w-2xl mx-auto p-4">
-        {/* Create Post Card */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4">
-            <div className="flex space-x-3">
-              {user?.user_metadata?.avatar_url ? (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt="Your avatar"
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-              )}
-              
-              <div className="flex-1">
-                <textarea
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="What's happening in your neighborhood?"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
-                  rows={3}
-                />
-                
-                <div className="flex items-center mt-2">
-                  <div className="relative flex-1">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={newPostLocation}
-                      onChange={(e) => setNewPostLocation(e.target.value)}
-                      placeholder="Add location (optional)"
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    />
-                  </div>
-                </div>
-                
-                {error && (
-                  <div className="mt-2 text-red-600 text-sm">
-                    {error}
-                  </div>
-                )}
-                
-                {(newPostImage || newPostVideo) && (
-                  <div className="mt-2 relative">
-                    {newPostImage && (
-                      <div className="relative">
-                        <img
-                          src={URL.createObjectURL(newPostImage)}
-                          alt="Post image"
-                          className="w-full h-40 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => setNewPostImage(null)}
-                          className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                    
-                    {newPostVideo && (
-                      <div className="relative">
-                        <video
-                          src={URL.createObjectURL(newPostVideo)}
-                          controls
-                          className="w-full h-40 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => setNewPostVideo(null)}
-                          className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <div className="flex space-x-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
-                title="Add Image"
-              >
-                <Image className="h-5 w-5" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              
-              <button
-                onClick={() => videoInputRef.current?.click()}
-                className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
-                title="Add Video"
-              >
-                <Video className="h-5 w-5" />
-              </button>
-              <input
-                ref={videoInputRef}
-                type="file"
-                accept="video/*"
-                onChange={handleVideoUpload}
-                className="hidden"
-              />
-            </div>
-            
-            <button
-              onClick={handleCreatePost}
-              disabled={!newPostContent.trim() || submitting}
-              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-full font-medium flex items-center space-x-2"
-            >
-              {submitting ? (
-                <>
-                  <Loader className="h-4 w-4 animate-spin" />
-                  <span>Posting...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  <span>Post</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow mb-6 p-4">
-          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-            <div className="relative flex-1">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                placeholder="Filter by location (worldwide)"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              />
-            </div>
-            
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setTimeFilter('all')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  timeFilter === 'all' 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setTimeFilter('today')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  timeFilter === 'today' 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => setTimeFilter('week')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  timeFilter === 'week' 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                This Week
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Posts List */}
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader className="h-8 w-8 animate-spin text-green-500" />
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <MessageCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No posts yet
-            </h3>
-            <p className="text-gray-600 mb-6">
-              {selectedLocation 
-                ? `No posts found in "${selectedLocation}". Try a different location or be the first to post!` 
-                : "Be the first to post in your community!"}
-            </p>
-            <button
-              onClick={() => {
-                setSelectedLocation('')
-                setTimeFilter('all')
-              }}
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium"
-            >
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {posts.map((post) => (
-              <div key={post.id} className="bg-white rounded-lg shadow">
-                {/* Post Header */}
-                <div className="p-4 flex items-start space-x-3">
-                  {post.user_avatar_url ? (
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Newsfeed */}
+          <div className="lg:col-span-2">
+            {/* Create Post Card */}
+            <div className="bg-white rounded-lg shadow mb-6">
+              <div className="p-4">
+                <div className="flex space-x-3">
+                  {user?.user_metadata?.avatar_url ? (
                     <img
-                      src={post.user_avatar_url}
-                      alt={post.user_name}
+                      src={user.user_metadata.avatar_url}
+                      alt="Your avatar"
                       className="w-10 h-10 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                       <User className="h-5 w-5 text-white" />
                     </div>
                   )}
                   
                   <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {post.user_name}
-                        </h3>
-                        <div className="flex items-center text-sm text-gray-500 space-x-2">
-                          <span>{formatTimeAgo(post.created_at)}</span>
-                          {post.location && (
-                            <>
-                              <span>•</span>
-                              <div className="flex items-center space-x-1">
-                                <MapPin className="h-3 w-3" />
-                                <span>{post.location}</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                    <textarea
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      placeholder="What's happening in your neighborhood?"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                      rows={3}
+                    />
+                    
+                    <div className="flex items-center mt-2">
+                      <div className="relative flex-1">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={newPostLocation}
+                          onChange={(e) => setNewPostLocation(e.target.value)}
+                          placeholder="Add location (optional)"
+                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        />
                       </div>
-                      
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
                     </div>
                     
-                    <p className="mt-2 text-gray-700 whitespace-pre-line">
-                      {post.content}
-                    </p>
+                    {error && (
+                      <div className="mt-2 text-red-600 text-sm">
+                        {error}
+                      </div>
+                    )}
+                    
+                    {(newPostImage || newPostVideo) && (
+                      <div className="mt-2 relative">
+                        {newPostImage && (
+                          <div className="relative">
+                            <img
+                              src={URL.createObjectURL(newPostImage)}
+                              alt="Post image"
+                              className="w-full h-40 object-cover rounded-lg"
+                            />
+                            <button
+                              onClick={() => setNewPostImage(null)}
+                              className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                        
+                        {newPostVideo && (
+                          <div className="relative">
+                            <video
+                              src={URL.createObjectURL(newPostVideo)}
+                              controls
+                              className="w-full h-40 object-cover rounded-lg"
+                            />
+                            <button
+                              onClick={() => setNewPostVideo(null)}
+                              className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-                
-                {/* Post Media */}
-                {post.image_url && (
-                  <div className="px-4 pb-4">
-                    <img
-                      src={post.image_url}
-                      alt="Post image"
-                      className="w-full rounded-lg"
-                    />
-                  </div>
-                )}
-                
-                {post.video_url && (
-                  <div className="px-4 pb-4">
-                    <video
-                      src={post.video_url}
-                      controls
-                      className="w-full rounded-lg"
-                    />
-                  </div>
-                )}
-                
-                {/* Post Stats */}
-                <div className="px-4 py-2 border-t border-gray-100 text-sm text-gray-500 flex items-center space-x-4">
-                  <div className="flex items-center space-x-1">
-                    <Heart className="h-4 w-4" />
-                    <span>{post.likes} likes</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-1">
-                    <MessageCircle className="h-4 w-4" />
-                    <span>{post.comments_count} comments</span>
-                  </div>
-                </div>
-                
-                {/* Post Actions */}
-                <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+              </div>
+              
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                <div className="flex space-x-2">
                   <button
-                    onClick={() => handleLikePost(post.id)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-                      post.liked_by_user 
-                        ? 'text-red-500' 
-                        : 'text-gray-500 hover:bg-gray-100'
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
+                    title="Add Image"
+                  >
+                    <Image className="h-5 w-5" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  
+                  <button
+                    onClick={() => videoInputRef.current?.click()}
+                    className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
+                    title="Add Video"
+                  >
+                    <Video className="h-5 w-5" />
+                  </button>
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                  />
+                </div>
+                
+                <button
+                  onClick={handleCreatePost}
+                  disabled={!newPostContent.trim() || submitting}
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-full font-medium flex items-center space-x-2"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" />
+                      <span>Posting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <span>Post</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            {/* Filters */}
+            <div className="bg-white rounded-lg shadow mb-6 p-4">
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                <div className="relative flex-1">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    placeholder="Filter by location (worldwide)"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setTimeFilter('all')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                      timeFilter === 'all' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    <Heart className={`h-5 w-5 ${post.liked_by_user ? 'fill-current' : ''}`} />
-                    <span>Like</span>
+                    All
                   </button>
-                  
                   <button
-                    onClick={() => handleCommentPost(post)}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                    onClick={() => setTimeFilter('today')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                      timeFilter === 'today' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Comment</span>
+                    Today
                   </button>
-                  
                   <button
-                    onClick={() => handleSharePost(post)}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                    onClick={() => setTimeFilter('week')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                      timeFilter === 'week' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <Share2 className="h-5 w-5" />
-                    <span>Share</span>
+                    This Week
                   </button>
                 </div>
               </div>
-            ))}
+            </div>
+            
+            {/* Posts List */}
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <Loader className="h-8 w-8 animate-spin text-green-500" />
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <MessageCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  No posts yet
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {selectedLocation 
+                    ? `No posts found in "${selectedLocation}". Try a different location or be the first to post!` 
+                    : "Be the first to post in your community!"}
+                </p>
+                <button
+                  onClick={() => {
+                    setSelectedLocation('')
+                    setTimeFilter('all')
+                  }}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {posts.map((post) => (
+                  <div key={post.id} className="bg-white rounded-lg shadow">
+                    {/* Post Header */}
+                    <div className="p-4 flex items-start space-x-3">
+                      {post.user_avatar_url ? (
+                        <img
+                          src={post.user_avatar_url}
+                          alt={post.user_name}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-white" />
+                        </div>
+                      )}
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-medium text-gray-900">
+                              {post.user_name}
+                            </h3>
+                            <div className="flex items-center text-sm text-gray-500 space-x-2">
+                              <span>{formatTimeAgo(post.created_at)}</span>
+                              {post.location && (
+                                <>
+                                  <span>•</span>
+                                  <div className="flex items-center space-x-1">
+                                    <MapPin className="h-3 w-3" />
+                                    <span>{post.location}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <button className="text-gray-400 hover:text-gray-600">
+                            <MoreHorizontal className="h-5 w-5" />
+                          </button>
+                        </div>
+                        
+                        <p className="mt-2 text-gray-700 whitespace-pre-line">
+                          {post.content}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Post Media */}
+                    {post.image_url && (
+                      <div className="px-4 pb-4">
+                        <img
+                          src={post.image_url}
+                          alt="Post image"
+                          className="w-full rounded-lg"
+                        />
+                      </div>
+                    )}
+                    
+                    {post.video_url && (
+                      <div className="px-4 pb-4">
+                        <video
+                          src={post.video_url}
+                          controls
+                          className="w-full rounded-lg"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Post Stats */}
+                    <div className="px-4 py-2 border-t border-gray-100 text-sm text-gray-500 flex items-center space-x-4">
+                      <div className="flex items-center space-x-1">
+                        <Heart className="h-4 w-4" />
+                        <span>{post.likes} likes</span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-1">
+                        <MessageCircle className="h-4 w-4" />
+                        <span>{post.comments_count} comments</span>
+                      </div>
+                    </div>
+                    
+                    {/* Post Actions */}
+                    <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+                      <button
+                        onClick={() => handleLikePost(post.id)}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+                          post.liked_by_user 
+                            ? 'text-red-500' 
+                            : 'text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Heart className={`h-5 w-5 ${post.liked_by_user ? 'fill-current' : ''}`} />
+                        <span>Like</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleCommentPost(post)}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                        <span>Comment</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleSharePost(post)}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                      >
+                        <Share2 className="h-5 w-5" />
+                        <span>Share</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+          
+          {/* Right Column */}
+          <div className="hidden lg:block">
+            <CommunityRightColumn userId={user?.id} />
+          </div>
+        </div>
       </div>
       
       {/* Modals */}
