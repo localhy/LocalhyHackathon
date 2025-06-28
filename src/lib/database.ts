@@ -825,6 +825,90 @@ export const createReferralJob = async (job: Omit<ReferralJob, 'id' | 'applicant
   return data
 }
 
+export const createReferralJobWithPayment = async (job: Omit<ReferralJob, 'id' | 'applicants_count' | 'created_at' | 'updated_at'>): Promise<ReferralJob | null> => {
+  // Check if user has enough credits
+  const { data: user } = await supabase
+    .from('user_profiles')
+    .select('credits, free_credits, purchased_credits')
+    .eq('id', job.user_id)
+    .single()
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  const totalCredits = (user.credits || 0) + (user.free_credits || 0) + (user.purchased_credits || 0)
+  if (totalCredits < REFERRAL_JOB_POSTING_COST) {
+    throw new Error('Insufficient credits')
+  }
+
+  // Determine which credits to use (free credits first, then purchased, then earned)
+  let freeCreditsToUse = Math.min(user.free_credits || 0, REFERRAL_JOB_POSTING_COST)
+  let remainingCost = REFERRAL_JOB_POSTING_COST - freeCreditsToUse
+  let purchasedCreditsToUse = Math.min(user.purchased_credits || 0, remainingCost)
+  remainingCost -= purchasedCreditsToUse
+  let earnedCreditsToUse = remainingCost
+
+  // Create the referral job first
+  const { data: newJob, error: jobError } = await supabase
+    .from('referral_jobs')
+    .insert(job)
+    .select()
+    .single()
+
+  if (jobError) {
+    console.error('Error creating referral job:', jobError)
+    throw new Error('Failed to create referral job')
+  }
+
+  // Deduct credits from user profile
+  const newFreeCredits = (user.free_credits || 0) - freeCreditsToUse
+  const newPurchasedCredits = (user.purchased_credits || 0) - purchasedCreditsToUse
+  const newEarnedCredits = (user.credits || 0) - earnedCreditsToUse
+
+  const { error: updateError } = await supabase
+    .from('user_profiles')
+    .update({
+      free_credits: newFreeCredits,
+      purchased_credits: newPurchasedCredits,
+      credits: newEarnedCredits
+    })
+    .eq('id', job.user_id)
+
+  if (updateError) {
+    console.error('Error updating user credits:', updateError)
+    // Rollback the job creation
+    await supabase.from('referral_jobs').delete().eq('id', newJob.id)
+    throw new Error('Failed to deduct credits')
+  }
+
+  // Create a transaction record
+  const { error: transactionError } = await supabase
+    .from('transactions')
+    .insert({
+      user_id: job.user_id,
+      type: 'credit_usage',
+      amount: 0, // No fiat amount involved
+      credits: REFERRAL_JOB_POSTING_COST,
+      currency: 'USD',
+      description: `Referral job posting fee for "${job.title}"`,
+      status: 'completed',
+      metadata: {
+        referral_job_id: newJob.id,
+        free_credits_used: freeCreditsToUse,
+        purchased_credits_used: purchasedCreditsToUse,
+        earned_credits_used: earnedCreditsToUse
+      }
+    })
+
+  if (transactionError) {
+    console.error('Error creating transaction record:', transactionError)
+    // Note: We don't rollback here as the job was successfully created and credits deducted
+  }
+
+  return newJob
+}
+
 export const updateReferralJob = async (jobId: string, updates: UpdateReferralJobData): Promise<ReferralJob | null> => {
   const { data, error } = await supabase
     .from('referral_jobs')
