@@ -23,6 +23,8 @@ import MyPosts from './components/MyPosts';
 import Wallet from './components/Wallet';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
+import Notifications from './components/Notifications';
+import Messages from './components/Messages';
 
 const LandingPage = () => (
   <div className="min-h-screen bg-white">
@@ -195,6 +197,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/notifications" 
+            element={
+              <ProtectedRoute>
+                <Notifications />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/messages" 
+            element={
+              <ProtectedRoute>
+                <Messages />
               </ProtectedRoute>
             } 
           />
