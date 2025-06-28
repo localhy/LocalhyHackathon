@@ -13,6 +13,13 @@ export interface UserProfile {
   updated_at: string
   credits?: number
   fiat_balance?: number
+  // Contact and social media fields
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
 }
 
 export interface Idea {

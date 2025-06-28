@@ -26,7 +26,7 @@ const Profile = () => {
     joinedDate: '',
     newsletterOptIn: false,
     avatarUrl: '',
-    // New social media fields
+    // Contact and social media fields
     phone: '',
     linkedin: '',
     twitter: '',
@@ -54,13 +54,13 @@ const Profile = () => {
             joinedDate: new Date(dbProfile.created_at).toLocaleDateString(),
             newsletterOptIn: dbProfile.newsletter_opt_in || false,
             avatarUrl: dbProfile.avatar_url || '',
-            // Social media fields - these would come from extended profile
-            phone: '',
-            linkedin: '',
-            twitter: '',
-            facebook: '',
-            instagram: '',
-            website: ''
+            // Contact and social media fields
+            phone: dbProfile.phone || '',
+            linkedin: dbProfile.linkedin || '',
+            twitter: dbProfile.twitter || '',
+            facebook: dbProfile.facebook || '',
+            instagram: dbProfile.instagram || '',
+            website: dbProfile.website || ''
           })
         } else {
           // Fallback to user metadata if no database profile
@@ -166,7 +166,14 @@ const Profile = () => {
         location: profileData.location,
         user_type: profileData.userType as any,
         newsletter_opt_in: profileData.newsletterOptIn,
-        avatar_url: profileData.avatarUrl
+        avatar_url: profileData.avatarUrl,
+        // Contact and social media fields
+        phone: profileData.phone,
+        website: profileData.website,
+        linkedin: profileData.linkedin,
+        twitter: profileData.twitter,
+        facebook: profileData.facebook,
+        instagram: profileData.instagram
       })
 
       if (updatedProfile) {
@@ -532,41 +539,6 @@ const Profile = () => {
                   </label>
                 </div>
               )}
-
-              {isEditing && (
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    onClick={() => {
-                      setIsEditing(false)
-                      setError('')
-                      setSuccess('')
-                    }}
-                    disabled={saving}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:bg-gray-100"
-                    style={{ fontFamily: 'Inter' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg flex items-center space-x-2"
-                    style={{ fontFamily: 'Inter' }}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" />
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span>Save Changes</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Contact & Social Media Section */}
@@ -730,6 +702,88 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
+
+                <div>
+                  <label 
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    Facebook
+                  </label>
+                  {isEditing ? (
+                    <div className="relative">
+                      <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="url"
+                        value={profileData.facebook}
+                        onChange={(e) => setProfileData({ ...profileData, facebook: e.target.value })}
+                        placeholder="https://facebook.com/yourprofile"
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        style={{ fontFamily: 'Inter' }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Facebook className="h-4 w-4 text-gray-400" />
+                      {profileData.facebook ? (
+                        <a 
+                          href={profileData.facebook} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                          style={{ fontFamily: 'Inter' }}
+                        >
+                          Facebook Profile
+                        </a>
+                      ) : (
+                        <span className="text-gray-900" style={{ fontFamily: 'Inter' }}>
+                          Not provided
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label 
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    Instagram
+                  </label>
+                  {isEditing ? (
+                    <div className="relative">
+                      <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="url"
+                        value={profileData.instagram}
+                        onChange={(e) => setProfileData({ ...profileData, instagram: e.target.value })}
+                        placeholder="https://instagram.com/yourusername"
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        style={{ fontFamily: 'Inter' }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Instagram className="h-4 w-4 text-gray-400" />
+                      {profileData.instagram ? (
+                        <a 
+                          href={profileData.instagram} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                          style={{ fontFamily: 'Inter' }}
+                        >
+                          Instagram Profile
+                        </a>
+                      ) : (
+                        <span className="text-gray-900" style={{ fontFamily: 'Inter' }}>
+                          Not provided
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 p-4 bg-blue-50 rounded-lg">
@@ -741,6 +795,45 @@ const Profile = () => {
                 </p>
               </div>
             </div>
+
+            {/* Save/Cancel Actions - Relocated after Contact & Social Media */}
+            {isEditing && (
+              <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                <div></div> {/* Empty div for spacing */}
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setIsEditing(false)
+                      setError('')
+                      setSuccess('')
+                    }}
+                    disabled={saving}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:bg-gray-100"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg flex items-center space-x-2"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        <span>Save Changes</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
