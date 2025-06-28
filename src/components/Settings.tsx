@@ -40,6 +40,12 @@ const Settings = () => {
       case 'referral-jobs':
         navigate('/dashboard/referral-jobs')
         break
+      case 'business-pages':
+        navigate('/dashboard/business-pages')
+        break
+      case 'community':
+        navigate('/dashboard/community')
+        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break

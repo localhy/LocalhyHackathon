@@ -405,6 +405,12 @@ const ReferralJobs = () => {
       case 'referral-jobs':
         // Stay on current page
         break
+      case 'business-pages':
+        navigate('/dashboard/business-pages')
+        break
+      case 'community':
+        navigate('/dashboard/community')
+        break
       case 'starter-tools':
         navigate('/dashboard/starter-tools')
         break
