@@ -167,14 +167,11 @@ export interface Promotion {
 }
 
 export interface WalletStats {
-  credits: number
-  fiat_balance: number
-  total_earned: number
-  total_spent: number
-  pending_transactions: number
-  recent_transactions: Transaction[]
-  monthly_earnings: number
-  monthly_spending: number
+  currentCredits: number
+  fiatBalance: number
+  totalEarned: number
+  totalSpent: number
+  pendingEarnings: number
 }
 
 // Create types for form data
@@ -266,6 +263,15 @@ export interface CreateMessageData {
   subject?: string
 }
 
+export interface CreatePromotionData {
+  user_id: string
+  content_id: string
+  content_type: 'idea' | 'referral_job' | 'tool'
+  promotion_type: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
+  duration_days: number
+  cost_credits: number
+}
+
 export interface CreatePromotionAdData {
   user_id: string
   content_id: string
@@ -282,34 +288,18 @@ export const REFERRAL_JOB_POSTING_COST = 10 // Credits required to post a referr
 
 // Promotion pricing function
 export const getPromotionPricing = (
-  contentType: 'idea' | 'referral_job' | 'tool',
-  promotionType: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
+  promotionType: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement',
+  durationDays: number
 ): number => {
-  // Define pricing based on promotion type and content type
-  const pricingMatrix = {
-    featured_homepage: {
-      idea: 50,
-      referral_job: 75,
-      tool: 60
-    },
-    boosted_search: {
-      idea: 25,
-      referral_job: 35,
-      tool: 30
-    },
-    category_spotlight: {
-      idea: 40,
-      referral_job: 50,
-      tool: 45
-    },
-    premium_placement: {
-      idea: 80,
-      referral_job: 100,
-      tool: 90
-    }
+  // Define pricing per day based on promotion type
+  const dailyPricing = {
+    featured_homepage: 15,
+    boosted_search: 5,
+    category_spotlight: 7,
+    premium_placement: 10
   }
 
-  return pricingMatrix[promotionType][contentType] || 0
+  return dailyPricing[promotionType] * durationDays
 }
 
 // User Profile Functions
@@ -1067,6 +1057,22 @@ export const subscribeToUserMessages = (userId: string, callback: (payload: any)
     .subscribe()
 }
 
+export const subscribeToUserProfile = (userId: string, callback: (payload: any) => void) => {
+  return supabase
+    .channel('user-profile')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'user_profiles',
+        filter: `id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe()
+}
+
 // Wallet Functions
 export const getUserCredits = async (userId: string): Promise<number> => {
   const { data, error } = await supabase
@@ -1083,12 +1089,13 @@ export const getUserCredits = async (userId: string): Promise<number> => {
   return data?.credits || 0
 }
 
-export const getUserTransactions = async (userId: string): Promise<Transaction[]> => {
+export const getUserTransactions = async (userId: string, limit = 50): Promise<Transaction[]> => {
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
+    .limit(limit)
 
   if (error) {
     console.error('Error fetching transactions:', error)
@@ -1126,58 +1133,151 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
 
     // Calculate totals
     const completedTransactions = transactions?.filter(t => t.status === 'completed') || []
-    const pendingTransactions = transactions?.filter(t => t.status === 'pending') || []
 
     const totalEarned = completedTransactions
       .filter(t => ['credit_earning', 'refund'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amount), 0)
+      .reduce((sum, t) => sum + Number(t.credits), 0)
 
     const totalSpent = completedTransactions
-      .filter(t => ['credit_usage', 'credit_purchase', 'withdrawal'].includes(t.type))
+      .filter(t => ['credit_usage', 'credit_purchase'].includes(t.type))
       .reduce((sum, t) => sum + Number(t.amount), 0)
 
-    // Calculate monthly stats (last 30 days)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const monthlyTransactions = completedTransactions.filter(t => 
-      new Date(t.created_at) >= thirtyDaysAgo
-    )
-
-    const monthlyEarnings = monthlyTransactions
-      .filter(t => ['credit_earning', 'refund'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amount), 0)
-
-    const monthlySpending = monthlyTransactions
-      .filter(t => ['credit_usage', 'credit_purchase', 'withdrawal'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.amount), 0)
-
-    // Get recent transactions (last 10)
-    const recentTransactions = transactions?.slice(0, 10) || []
+    const pendingEarnings = transactions?.filter(t => t.status === 'pending' && ['credit_earning'].includes(t.type))
+      .reduce((sum, t) => sum + Number(t.credits), 0) || 0
 
     return {
-      credits: userProfile?.credits || 0,
-      fiat_balance: Number(userProfile?.fiat_balance) || 0,
-      total_earned: totalEarned,
-      total_spent: totalSpent,
-      pending_transactions: pendingTransactions.length,
-      recent_transactions: recentTransactions,
-      monthly_earnings: monthlyEarnings,
-      monthly_spending: monthlySpending
+      currentCredits: userProfile?.credits || 0,
+      fiatBalance: Number(userProfile?.fiat_balance) || 0,
+      totalEarned,
+      totalSpent,
+      pendingEarnings
     }
   } catch (error) {
     console.error('Error getting wallet stats:', error)
     // Return default stats in case of error
     return {
-      credits: 0,
-      fiat_balance: 0,
-      total_earned: 0,
-      total_spent: 0,
-      pending_transactions: 0,
-      recent_transactions: [],
-      monthly_earnings: 0,
-      monthly_spending: 0
+      currentCredits: 0,
+      fiatBalance: 0,
+      totalEarned: 0,
+      totalSpent: 0,
+      pendingEarnings: 0
     }
+  }
+}
+
+export const transferCreditsToFiatBalance = async (userId: string, credits: number): Promise<boolean> => {
+  try {
+    // Check if user has enough credits
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('credits, fiat_balance')
+      .eq('id', userId)
+      .single()
+
+    if (!userProfile || (userProfile.credits || 0) < credits) {
+      throw new Error('Insufficient credits for conversion')
+    }
+
+    // Convert credits to fiat (1 credit = $1)
+    const fiatAmount = credits
+    const newCredits = (userProfile.credits || 0) - credits
+    const newFiatBalance = Number(userProfile.fiat_balance || 0) + fiatAmount
+
+    // Update user profile
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        credits: newCredits,
+        fiat_balance: newFiatBalance
+      })
+      .eq('id', userId)
+
+    if (updateError) {
+      throw new Error(updateError.message)
+    }
+
+    // Create transaction record
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        type: 'credit_to_fiat_conversion',
+        amount: fiatAmount,
+        credits: -credits,
+        currency: 'USD',
+        description: `Converted ${credits} credits to $${fiatAmount.toFixed(2)} cash`,
+        status: 'completed'
+      })
+
+    if (transactionError) {
+      console.error('Error creating transaction record:', transactionError)
+      // Don't throw here as the main operation succeeded
+    }
+
+    return true
+  } catch (error: any) {
+    console.error('Error transferring credits to fiat:', error)
+    throw new Error(error.message || 'Failed to convert credits to cash')
+  }
+}
+
+export const processWithdrawal = async (userId: string, amount: number): Promise<boolean> => {
+  try {
+    // Check if user has enough fiat balance
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('fiat_balance')
+      .eq('id', userId)
+      .single()
+
+    if (!userProfile || Number(userProfile.fiat_balance || 0) < amount) {
+      throw new Error('Insufficient balance for withdrawal')
+    }
+
+    // Calculate fee (15%)
+    const fee = amount * 0.15
+    const netAmount = amount - fee
+    const newFiatBalance = Number(userProfile.fiat_balance || 0) - amount
+
+    // Update user profile
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        fiat_balance: newFiatBalance
+      })
+      .eq('id', userId)
+
+    if (updateError) {
+      throw new Error(updateError.message)
+    }
+
+    // Create transaction record
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        type: 'withdrawal',
+        amount: amount,
+        credits: 0,
+        currency: 'USD',
+        description: `Withdrawal request for $${amount.toFixed(2)} (net: $${netAmount.toFixed(2)} after 15% fee)`,
+        status: 'pending',
+        metadata: {
+          gross_amount: amount,
+          fee_amount: fee,
+          net_amount: netAmount
+        }
+      })
+
+    if (transactionError) {
+      console.error('Error creating transaction record:', transactionError)
+      // Don't throw here as the main operation succeeded
+    }
+
+    return true
+  } catch (error: any) {
+    console.error('Error processing withdrawal:', error)
+    throw new Error(error.message || 'Failed to process withdrawal')
   }
 }
 
@@ -1269,34 +1369,83 @@ export const incrementPromotionClicks = async (promotionId: string): Promise<boo
   return true
 }
 
-export const createPromotionAd = async (promotionData: CreatePromotionAdData): Promise<Promotion | null> => {
-  // Check if user has enough credits
-  const { data: userProfile } = await supabase
-    .from('user_profiles')
-    .select('credits')
-    .eq('id', promotionData.user_id)
-    .single()
+export const createPromotionAd = async (promotionData: CreatePromotionData): Promise<Promotion | null> => {
+  try {
+    // Check if user has enough credits
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('credits')
+      .eq('id', promotionData.user_id)
+      .single()
 
-  if (!userProfile || (userProfile.credits || 0) < promotionData.cost_credits) {
-    throw new Error('Insufficient credits to create promotion')
-  }
+    if (!userProfile || (userProfile.credits || 0) < promotionData.cost_credits) {
+      throw new Error('Insufficient credits to create promotion')
+    }
 
-  // Create the promotion and deduct credits in a transaction
-  const { data, error } = await supabase.rpc('create_promotion_with_payment', {
-    p_user_id: promotionData.user_id,
-    p_content_id: promotionData.content_id,
-    p_content_type: promotionData.content_type,
-    p_promotion_type: promotionData.promotion_type,
-    p_cost_credits: promotionData.cost_credits,
-    p_start_date: promotionData.start_date,
-    p_end_date: promotionData.end_date,
-    p_metadata: promotionData.metadata || {}
-  })
+    // Calculate dates
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + promotionData.duration_days)
 
-  if (error) {
+    // Create promotion and deduct credits
+    const newCredits = (userProfile.credits || 0) - promotionData.cost_credits
+
+    // Update user credits
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({ credits: newCredits })
+      .eq('id', promotionData.user_id)
+
+    if (updateError) {
+      throw new Error(updateError.message)
+    }
+
+    // Create promotion
+    const { data: promotion, error: promotionError } = await supabase
+      .from('promotions')
+      .insert({
+        user_id: promotionData.user_id,
+        content_id: promotionData.content_id,
+        content_type: promotionData.content_type,
+        promotion_type: promotionData.promotion_type,
+        cost_credits: promotionData.cost_credits,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        status: 'active'
+      })
+      .select()
+      .single()
+
+    if (promotionError) {
+      throw new Error(promotionError.message)
+    }
+
+    // Create transaction record
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: promotionData.user_id,
+        type: 'credit_usage',
+        amount: 0,
+        credits: -promotionData.cost_credits,
+        currency: 'USD',
+        description: `Promotion: ${promotionData.promotion_type} for ${promotionData.duration_days} days`,
+        status: 'completed',
+        metadata: {
+          promotion_id: promotion.id,
+          content_id: promotionData.content_id,
+          content_type: promotionData.content_type
+        }
+      })
+
+    if (transactionError) {
+      console.error('Error creating transaction record:', transactionError)
+      // Don't throw here as the main operation succeeded
+    }
+
+    return promotion
+  } catch (error: any) {
     console.error('Error creating promotion:', error)
-    throw new Error(error.message)
+    throw new Error(error.message || 'Failed to create promotion')
   }
-
-  return data
 }
