@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Lightbulb, Megaphone, Wrench, X } from 'lucide-react'
+import { Plus, Lightbulb, Megaphone, Wrench, X, Building, Users } from 'lucide-react'
 
 interface FloatingActionButtonProps {
   onNavigate: (page: string) => void
@@ -22,6 +22,20 @@ const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onNavigate 
       icon: Megaphone,
       page: '/dashboard/create-new?tab=referral',
       color: 'bg-blue-500 hover:bg-blue-600'
+    },
+    {
+      id: 'business',
+      label: 'Create Business Page',
+      icon: Building,
+      page: '/dashboard/create-business-page',
+      color: 'bg-yellow-500 hover:bg-yellow-600'
+    },
+    {
+      id: 'community',
+      label: 'Create Community Post',
+      icon: Users,
+      page: '/dashboard/community',
+      color: 'bg-indigo-500 hover:bg-indigo-600'
     },
     {
       id: 'tool',
