@@ -24,7 +24,9 @@ import {
   ArrowRight, 
   Gift, 
   Zap, 
-  Shield
+  Shield,
+  Megaphone,
+  Lock
 } from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
