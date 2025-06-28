@@ -166,6 +166,17 @@ export interface Promotion {
   updated_at: string
 }
 
+export interface WalletStats {
+  credits: number
+  fiat_balance: number
+  total_earned: number
+  total_spent: number
+  pending_transactions: number
+  recent_transactions: Transaction[]
+  monthly_earnings: number
+  monthly_spending: number
+}
+
 // Create types for form data
 export interface CreateIdeaData {
   user_id: string
@@ -1085,6 +1096,89 @@ export const getUserTransactions = async (userId: string): Promise<Transaction[]
   }
 
   return data || []
+}
+
+export const getWalletStats = async (userId: string): Promise<WalletStats> => {
+  try {
+    // Get user profile for current balances
+    const { data: userProfile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('credits, fiat_balance')
+      .eq('id', userId)
+      .single()
+
+    if (profileError) {
+      console.error('Error fetching user profile for wallet stats:', profileError)
+      throw new Error(profileError.message)
+    }
+
+    // Get all transactions for calculations
+    const { data: transactions, error: transactionsError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (transactionsError) {
+      console.error('Error fetching transactions for wallet stats:', transactionsError)
+      throw new Error(transactionsError.message)
+    }
+
+    // Calculate totals
+    const completedTransactions = transactions?.filter(t => t.status === 'completed') || []
+    const pendingTransactions = transactions?.filter(t => t.status === 'pending') || []
+
+    const totalEarned = completedTransactions
+      .filter(t => ['credit_earning', 'refund'].includes(t.type))
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+
+    const totalSpent = completedTransactions
+      .filter(t => ['credit_usage', 'credit_purchase', 'withdrawal'].includes(t.type))
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+
+    // Calculate monthly stats (last 30 days)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const monthlyTransactions = completedTransactions.filter(t => 
+      new Date(t.created_at) >= thirtyDaysAgo
+    )
+
+    const monthlyEarnings = monthlyTransactions
+      .filter(t => ['credit_earning', 'refund'].includes(t.type))
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+
+    const monthlySpending = monthlyTransactions
+      .filter(t => ['credit_usage', 'credit_purchase', 'withdrawal'].includes(t.type))
+      .reduce((sum, t) => sum + Number(t.amount), 0)
+
+    // Get recent transactions (last 10)
+    const recentTransactions = transactions?.slice(0, 10) || []
+
+    return {
+      credits: userProfile?.credits || 0,
+      fiat_balance: Number(userProfile?.fiat_balance) || 0,
+      total_earned: totalEarned,
+      total_spent: totalSpent,
+      pending_transactions: pendingTransactions.length,
+      recent_transactions: recentTransactions,
+      monthly_earnings: monthlyEarnings,
+      monthly_spending: monthlySpending
+    }
+  } catch (error) {
+    console.error('Error getting wallet stats:', error)
+    // Return default stats in case of error
+    return {
+      credits: 0,
+      fiat_balance: 0,
+      total_earned: 0,
+      total_spent: 0,
+      pending_transactions: 0,
+      recent_transactions: [],
+      monthly_earnings: 0,
+      monthly_spending: 0
+    }
+  }
 }
 
 // Purchase Functions
