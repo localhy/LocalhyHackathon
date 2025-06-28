@@ -214,7 +214,7 @@ export interface Tool {
 export interface Comment {
   id: string
   content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
+  content_type: 'idea' | 'referral_job' | 'tool'
   user_id: string
   parent_id?: string
   content: string
@@ -297,34 +297,6 @@ export interface CreditBalance {
   freeCredits: number
 }
 
-// Community Post Types
-export interface CommunityPost {
-  id: string
-  user_id: string
-  content: string
-  image_url?: string
-  video_url?: string
-  location?: string
-  likes: number
-  comments_count: number
-  created_at: string
-  updated_at: string
-  user_profiles?: {
-    name: string
-    avatar_url?: string
-    user_type?: string
-  }
-  liked_by_user?: boolean
-}
-
-export interface CreateCommunityPostData {
-  user_id: string
-  content: string
-  image_url?: string
-  video_url?: string
-  location?: string
-}
-
 // Create types for form data
 export interface CreateIdeaData {
   user_id: string
@@ -402,7 +374,7 @@ export interface UpdateReferralJobData {
 
 export interface CreateCommentData {
   content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
+  content_type: 'idea' | 'referral_job' | 'tool'
   user_id: string
   parent_id?: string
   content: string
@@ -1115,174 +1087,8 @@ export const deleteTool = async (id: string): Promise<boolean> => {
   return true
 }
 
-// Community Post Functions
-export const getCommunityPosts = async (limit = 10, offset = 0, userId?: string): Promise<CommunityPost[]> => {
-  const { data, error } = await supabase
-    .from('community_posts')
-    .select(`
-      *,
-      user_profiles!inner(name, avatar_url, user_type)
-    `)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
-
-  if (error) {
-    console.error('Error fetching community posts:', error)
-    return []
-  }
-
-  // Add user interaction data if userId is provided
-  if (userId && data) {
-    const postsWithInteractions = await Promise.all(
-      data.map(async (post) => {
-        // Check if user liked this post
-        const { data: likeData } = await supabase
-          .from('community_post_likes')
-          .select('id')
-          .eq('community_post_id', post.id)
-          .eq('user_id', userId)
-          .maybeSingle()
-
-        return {
-          ...post,
-          liked_by_user: !!likeData
-        }
-      })
-    )
-    return postsWithInteractions
-  }
-
-  return data || []
-}
-
-export const getCommunityPostById = async (id: string, userId?: string): Promise<CommunityPost | null> => {
-  const { data, error } = await supabase
-    .from('community_posts')
-    .select(`
-      *,
-      user_profiles!inner(name, avatar_url, user_type)
-    `)
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    console.error('Error fetching community post:', error)
-    return null
-  }
-
-  // Add user interaction data if userId is provided
-  if (userId && data) {
-    // Check if user liked this post
-    const { data: likeData } = await supabase
-      .from('community_post_likes')
-      .select('id')
-      .eq('community_post_id', data.id)
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    return {
-      ...data,
-      liked_by_user: !!likeData
-    }
-  }
-
-  return data
-}
-
-export const createCommunityPost = async (postData: CreateCommunityPostData): Promise<CommunityPost | null> => {
-  const { data, error } = await supabase
-    .from('community_posts')
-    .insert(postData)
-    .select(`
-      *,
-      user_profiles!inner(name, avatar_url, user_type)
-    `)
-    .single()
-
-  if (error) {
-    console.error('Error creating community post:', error)
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-export const deleteCommunityPost = async (id: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('community_posts')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    console.error('Error deleting community post:', error)
-    return false
-  }
-
-  return true
-}
-
-export const likeCommunityPost = async (postId: string, userId: string): Promise<boolean> => {
-  // Check if already liked
-  const { data: existingLike } = await supabase
-    .from('community_post_likes')
-    .select('id')
-    .eq('community_post_id', postId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (existingLike) {
-    // Unlike
-    const { error } = await supabase
-      .from('community_post_likes')
-      .delete()
-      .eq('community_post_id', postId)
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('Error unliking community post:', error)
-      return false
-    }
-
-    // Decrement likes count
-    await supabase.rpc('decrement_community_post_likes', { p_post_id: postId })
-  } else {
-    // Like
-    const { error } = await supabase
-      .from('community_post_likes')
-      .insert({ community_post_id: postId, user_id: userId })
-
-    if (error) {
-      console.error('Error liking community post:', error)
-      return false
-    }
-
-    // Increment likes count
-    await supabase.rpc('increment_community_post_likes', { p_post_id: postId })
-  }
-
-  return true
-}
-
-export const getUserCommunityPosts = async (userId: string): Promise<CommunityPost[]> => {
-  const { data, error } = await supabase
-    .from('community_posts')
-    .select(`
-      *,
-      user_profiles!inner(name, avatar_url, user_type)
-    `)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching user community posts:', error)
-    return []
-  }
-
-  return data || []
-}
-
 // Comments Functions
-export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post', userId?: string): Promise<Comment[]> => {
+export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool', userId?: string): Promise<Comment[]> => {
   const { data, error } = await supabase
     .from('comments')
     .select(`
@@ -1335,11 +1141,6 @@ export const createComment = async (commentData: CreateCommentData): Promise<Com
   if (error) {
     console.error('Error creating comment:', error)
     return null
-  }
-
-  // Increment comments count for community posts
-  if (commentData.content_type === 'community_post') {
-    await supabase.rpc('increment_community_post_comments', { p_post_id: commentData.content_id })
   }
 
   return data
@@ -1587,37 +1388,6 @@ export const subscribeToUserProfile = (userId: string, callback: (payload: any) 
         schema: 'public',
         table: 'user_profiles',
         filter: `id=eq.${userId}`
-      },
-      callback
-    )
-    .subscribe()
-}
-
-export const subscribeToCommunityPosts = (callback: (payload: any) => void) => {
-  return supabase
-    .channel('community-posts')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'community_posts'
-      },
-      callback
-    )
-    .subscribe()
-}
-
-export const subscribeToUserCommunityPosts = (userId: string, callback: (payload: any) => void) => {
-  return supabase
-    .channel(`user-community-posts-${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'community_posts',
-        filter: `user_id=eq.${userId}`
       },
       callback
     )

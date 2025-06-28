@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Users, Newspaper, ShoppingBag, Calendar, UserPlus, MessageCircle, Search, Filter, Plus, User, Heart, Share2, MapPin, Clock, ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import CommunityFeed from './community/CommunityFeed'
-import CommunitySidebar from './community/CommunitySidebar'
 
 interface TabProps {
   id: string
@@ -96,26 +94,10 @@ const CommunityPage = () => {
   ]
 
   const renderTabContent = () => {
-    if (activeTab === 'news-feed') {
-      return (
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main Content - Community Feed */}
-          <div className="lg:col-span-2">
-            <CommunityFeed />
-          </div>
-          
-          {/* Sidebar */}
-          <div className="hidden lg:block">
-            <CommunitySidebar />
-          </div>
-        </div>
-      )
-    }
-    
-    // For other tabs, show coming soon message
     const comingSoonMessage = (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          {activeTab === 'news-feed' && <Newspaper className="h-8 w-8 text-blue-500" />}
           {activeTab === 'marketplace' && <ShoppingBag className="h-8 w-8 text-blue-500" />}
           {activeTab === 'groups' && <Users className="h-8 w-8 text-blue-500" />}
           {activeTab === 'events' && <Calendar className="h-8 w-8 text-blue-500" />}
@@ -131,17 +113,18 @@ const CommunityPage = () => {
           className="text-gray-600 mb-6 max-w-md mx-auto"
           style={{ fontFamily: 'Inter' }}
         >
+          {activeTab === 'news-feed' && "We're working on bringing you a personalized news feed with updates from your local community."}
           {activeTab === 'marketplace' && "Soon you'll be able to buy, sell, and trade items with people in your local area."}
           {activeTab === 'groups' && "Join interest-based groups in your community to connect with like-minded neighbors."}
           {activeTab === 'events' && "Discover and create local events happening in your neighborhood."}
           {activeTab === 'invite' && "Help grow your local community by inviting your neighbors to join Localhy."}
         </p>
         <button
-          onClick={() => setActiveTab('news-feed')}
+          onClick={() => navigate('/dashboard/business-pages')}
           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium"
           style={{ fontFamily: 'Inter' }}
         >
-          Back to News Feed
+          Explore Business Pages
         </button>
       </div>
     )
