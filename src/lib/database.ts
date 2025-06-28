@@ -224,6 +224,23 @@ export interface UpdateIdeaData {
   thumbnail_url?: string
 }
 
+export interface UpdateReferralJobData {
+  title?: string
+  business_name?: string
+  description?: string
+  commission?: number
+  commission_type?: 'percentage' | 'fixed'
+  location?: string
+  category?: string
+  urgency?: 'low' | 'medium' | 'high'
+  requirements?: string
+  referral_type?: string
+  logo_url?: string
+  website?: string
+  cta_text?: string
+  terms?: string
+}
+
 export interface CreateCommentData {
   idea_id: string
   user_id: string
@@ -590,6 +607,22 @@ export const createReferralJobWithPayment = async (jobData: CreateReferralJobDat
   if (error) {
     console.error('Error creating referral job with payment:', error)
     throw new Error(error.message)
+  }
+
+  return data
+}
+
+export const updateReferralJob = async (id: string, updates: UpdateReferralJobData): Promise<ReferralJob | null> => {
+  const { data, error } = await supabase
+    .from('referral_jobs')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating referral job:', error)
+    return null
   }
 
   return data
