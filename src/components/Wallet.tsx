@@ -4,7 +4,7 @@ import { Wallet as WalletIcon, CreditCard, DollarSign, ArrowRight, ArrowLeft, Lo
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserCredits, getUserTransactions, transferCreditsToFiatBalance, processWithdrawalWithPaypal, transferUserCredits, REFERRAL_JOB_POSTING_COST, type Transaction } from '../lib/database'
+import { getUserCredits, getUserTransactions, transferCreditsToFiatBalance, processWithdrawalWithPaypal, transferUserCredits, type Transaction } from '../lib/database'
 import { supabase } from '../lib/supabase'
 
 // Credit package options
@@ -14,6 +14,9 @@ const CREDIT_PACKAGES = [
   { credits: 100, price: 100, popular: true, bonus: 200 },
   { credits: 500, price: 500, popular: false }
 ]
+
+// Referral job posting cost
+export const REFERRAL_JOB_POSTING_COST = 10
 
 const Wallet = () => {
   const navigate = useNavigate()
