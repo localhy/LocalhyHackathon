@@ -79,7 +79,6 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
   useEffect(() => {
     if (user && user.id) {
       loadUserActivity()
-      setupRealtimeSubscriptions()
     }
   }, [user])
 
@@ -88,33 +87,8 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
     updateMilestoneCompletion()
   }, [user, userActivity])
 
-  const loadUserActivity = async () => {
-    if (!user || !user.id) return
-
-    try {
-      setLoading(true)
-      
-      // Fetch all user activity in parallel
-      const [ideas, referralJobs, tools] = await Promise.all([
-        getUserIdeas(user.id),
-        getUserReferralJobs(user.id),
-        getUserTools(user.id)
-      ])
-
-      setUserActivity({
-        ideas,
-        referralJobs,
-        tools
-      })
-    } catch (error) {
-      console.error('Error loading user activity:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const setupRealtimeSubscriptions = () => {
-    // Robust validation of user object and ID
+  useEffect(() => {
+    // Setup real-time subscriptions
     if (!user || !user.id || typeof user.id !== 'string' || user.id.trim() === '') {
       console.warn('Cannot set up real-time subscriptions: invalid user or user ID')
       return
@@ -129,7 +103,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
 
       // Subscribe to ideas table changes for this user
       const ideasSubscription = supabase
-        .channel('user-ideas')
+        .channel(`user-ideas-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -164,7 +138,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
 
       // Subscribe to referral_jobs table changes for this user
       const referralJobsSubscription = supabase
-        .channel('user-referral-jobs')
+        .channel(`user-referral-jobs-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -199,7 +173,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
 
       // Subscribe to tools table changes for this user
       const toolsSubscription = supabase
-        .channel('user-tools')
+        .channel(`user-tools-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -232,7 +206,7 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
         )
         .subscribe()
 
-      // Cleanup subscriptions on unmount
+      // Cleanup subscriptions on unmount or when user changes
       return () => {
         try {
           profileSubscription?.unsubscribe()
@@ -245,6 +219,31 @@ const GoalsMilestones: React.FC<GoalsMilestonesProps> = ({ user }) => {
       }
     } catch (error) {
       console.error('Error setting up real-time subscriptions:', error)
+    }
+  }, [user?.id]) // Only depend on user.id to avoid unnecessary re-subscriptions
+
+  const loadUserActivity = async () => {
+    if (!user || !user.id) return
+
+    try {
+      setLoading(true)
+      
+      // Fetch all user activity in parallel
+      const [ideas, referralJobs, tools] = await Promise.all([
+        getUserIdeas(user.id),
+        getUserReferralJobs(user.id),
+        getUserTools(user.id)
+      ])
+
+      setUserActivity({
+        ideas,
+        referralJobs,
+        tools
+      })
+    } catch (error) {
+      console.error('Error loading user activity:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
