@@ -214,7 +214,7 @@ export interface Tool {
 export interface Comment {
   id: string
   content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool'
+  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
   user_id: string
   parent_id?: string
   content: string
@@ -297,6 +297,23 @@ export interface CreditBalance {
   freeCredits: number
 }
 
+export interface CommunityPost {
+  id: string
+  user_id: string
+  content: string
+  image_url?: string
+  video_url?: string
+  location?: string
+  likes: number
+  comments_count: number
+  created_at: string
+  updated_at: string
+  user_name: string
+  user_avatar_url?: string
+  user_type?: string
+  liked_by_user: boolean
+}
+
 // Create types for form data
 export interface CreateIdeaData {
   user_id: string
@@ -374,7 +391,7 @@ export interface UpdateReferralJobData {
 
 export interface CreateCommentData {
   content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool'
+  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
   user_id: string
   parent_id?: string
   content: string
@@ -405,6 +422,14 @@ export interface CreatePromotionAdData {
   start_date: string
   end_date: string
   metadata?: any
+}
+
+export interface CreateCommunityPostData {
+  user_id: string
+  content: string
+  image_url?: string
+  video_url?: string
+  location?: string
 }
 
 // Constants
@@ -1087,8 +1112,70 @@ export const deleteTool = async (id: string): Promise<boolean> => {
   return true
 }
 
+// Community Posts Functions
+export const createCommunityPost = async (postData: CreateCommunityPostData): Promise<CommunityPost | null> => {
+  const { data, error } = await supabase
+    .from('community_posts')
+    .insert(postData)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating community post:', error)
+    throw new Error(error.message)
+  }
+
+  // Get user profile for the new post
+  const { data: userProfile } = await supabase
+    .from('user_profiles')
+    .select('name, avatar_url, user_type')
+    .eq('id', postData.user_id)
+    .single()
+
+  return {
+    ...data,
+    user_name: userProfile?.name || 'Anonymous',
+    user_avatar_url: userProfile?.avatar_url,
+    user_type: userProfile?.user_type,
+    liked_by_user: false,
+    type: 'community_post'
+  }
+}
+
+export const getCommunityPosts = async (limit = 10, offset = 0, userId?: string): Promise<CommunityPost[]> => {
+  const { data, error } = await supabase.rpc('get_community_posts_with_interactions', {
+    p_user_id: userId || '00000000-0000-0000-0000-000000000000',
+    p_limit: limit,
+    p_offset: offset
+  })
+
+  if (error) {
+    console.error('Error fetching community posts:', error)
+    return []
+  }
+
+  return data.map((post: any) => ({
+    ...post,
+    type: 'community_post'
+  })) || []
+}
+
+export const likeCommunityPost = async (postId: string, userId: string): Promise<boolean> => {
+  const { error } = await supabase.rpc('toggle_community_post_like', {
+    p_user_id: userId,
+    p_post_id: postId
+  })
+
+  if (error) {
+    console.error('Error liking community post:', error)
+    return false
+  }
+
+  return true
+}
+
 // Comments Functions
-export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool', userId?: string): Promise<Comment[]> => {
+export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post', userId?: string): Promise<Comment[]> => {
   const { data, error } = await supabase
     .from('comments')
     .select(`
@@ -1388,6 +1475,21 @@ export const subscribeToUserProfile = (userId: string, callback: (payload: any) 
         schema: 'public',
         table: 'user_profiles',
         filter: `id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe()
+}
+
+export const subscribeToCommunityPosts = (callback: (payload: any) => void) => {
+  return supabase
+    .channel('community-posts')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'community_posts'
       },
       callback
     )
