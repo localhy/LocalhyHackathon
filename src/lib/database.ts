@@ -1755,11 +1755,11 @@ export const purchaseContent = async (
   price: number
 ): Promise<boolean> => {
   const { data, error } = await supabase.rpc('purchase_content', {
-    p_buyer_id: buyerId,
-    p_seller_id: sellerId,
+    p_buyer_user_id: buyerId,
+    p_creator_user_id: sellerId,
     p_content_id: contentId,
     p_content_type: contentType,
-    p_price: price
+    p_price_in_credits: price
   })
 
   if (error) {
