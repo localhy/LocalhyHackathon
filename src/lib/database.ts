@@ -1162,22 +1162,43 @@ export const createCommunityPost = async (postData: CreateCommunityPostData): Pr
   }
 }
 
-export const getCommunityPosts = async (limit = 10, offset = 0, userId?: string): Promise<CommunityPost[]> => {
-  const { data, error } = await supabase.rpc('get_community_posts_with_interactions', {
-    p_user_id: userId || '00000000-0000-0000-0000-000000000000',
-    p_limit: limit,
-    p_offset: offset
-  })
+export const getCommunityPosts = async (limit = 10, offset = 0, userId?: string, locationQuery?: string): Promise<CommunityPost[]> => {
+  if (locationQuery && locationQuery.trim() !== '') {
+    // Use location-based query if location is provided
+    const { data, error } = await supabase.rpc('get_community_posts_by_location', {
+      p_user_id: userId || '00000000-0000-0000-0000-000000000000',
+      p_location: locationQuery,
+      p_limit: limit,
+      p_offset: offset
+    })
 
-  if (error) {
-    console.error('Error fetching community posts:', error)
-    return []
+    if (error) {
+      console.error('Error fetching community posts by location:', error)
+      return []
+    }
+
+    return data.map((post: any) => ({
+      ...post,
+      type: 'community_post'
+    })) || []
+  } else {
+    // Use standard query if no location filter
+    const { data, error } = await supabase.rpc('get_community_posts_with_interactions', {
+      p_user_id: userId || '00000000-0000-0000-0000-000000000000',
+      p_limit: limit,
+      p_offset: offset
+    })
+
+    if (error) {
+      console.error('Error fetching community posts:', error)
+      return []
+    }
+
+    return data.map((post: any) => ({
+      ...post,
+      type: 'community_post'
+    })) || []
   }
-
-  return data.map((post: any) => ({
-    ...post,
-    type: 'community_post'
-  })) || []
 }
 
 export const likeCommunityPost = async (postId: string, userId: string): Promise<boolean> => {
