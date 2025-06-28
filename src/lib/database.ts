@@ -363,7 +363,7 @@ export const getIdeas = async (limit = 10, offset = 0, userId?: string): Promise
           .select('id')
           .eq('idea_id', idea.id)
           .eq('user_id', userId)
-          .single()
+          .maybeSingle()
 
         // Check if user bookmarked this idea
         const { data: bookmarkData } = await supabase
@@ -371,7 +371,7 @@ export const getIdeas = async (limit = 10, offset = 0, userId?: string): Promise
           .select('id')
           .eq('idea_id', idea.id)
           .eq('user_id', userId)
-          .single()
+          .maybeSingle()
 
         // Check if idea is promoted
         const { data: promotionData } = await supabase
@@ -381,7 +381,7 @@ export const getIdeas = async (limit = 10, offset = 0, userId?: string): Promise
           .eq('content_type', 'idea')
           .eq('status', 'active')
           .gte('end_date', new Date().toISOString())
-          .single()
+          .maybeSingle()
 
         return {
           ...idea,
@@ -482,7 +482,7 @@ export const likeIdea = async (ideaId: string, userId: string): Promise<boolean>
     .select('id')
     .eq('idea_id', ideaId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (existingLike) {
     // Unlike
@@ -524,7 +524,7 @@ export const bookmarkIdea = async (ideaId: string, userId: string): Promise<bool
     .select('id')
     .eq('idea_id', ideaId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (existingBookmark) {
     // Remove bookmark
@@ -584,7 +584,7 @@ export const getReferralJobs = async (limit = 10, offset = 0, userId?: string): 
           .eq('content_type', 'referral_job')
           .eq('status', 'active')
           .gte('end_date', new Date().toISOString())
-          .single()
+          .maybeSingle()
 
         return {
           ...job,
@@ -730,7 +730,7 @@ export const getTools = async (limit = 10, offset = 0): Promise<Tool[]> => {
           .eq('content_type', 'tool')
           .eq('status', 'active')
           .gte('end_date', new Date().toISOString())
-          .single()
+          .maybeSingle()
 
         return {
           ...tool,
@@ -832,7 +832,7 @@ export const likeComment = async (commentId: string, userId: string): Promise<bo
     .select('id')
     .eq('comment_id', commentId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (existingLike) {
     // Unlike
@@ -976,7 +976,7 @@ export const createMessage = async (messageData: CreateMessageData): Promise<Mes
     .from('conversations')
     .select('id')
     .or(`and(participant_1.eq.${messageData.sender_id},participant_2.eq.${messageData.recipient_id}),and(participant_1.eq.${messageData.recipient_id},participant_2.eq.${messageData.sender_id})`)
-    .single()
+    .maybeSingle()
 
   let conversationId = existingConversation?.id
 
@@ -1289,7 +1289,7 @@ export const hasUserPurchasedContent = async (userId: string, contentId: string,
     .eq('user_id', userId)
     .eq('content_id', contentId)
     .eq('content_type', contentType)
-    .single()
+    .maybeSingle()
 
   if (error && error.code !== 'PGRST116') {
     console.error('Error checking purchase status:', error)
@@ -1331,7 +1331,7 @@ export const getActivePromotionForContent = async (contentId: string, contentTyp
     .eq('content_type', contentType)
     .eq('status', 'active')
     .gte('end_date', new Date().toISOString())
-    .single()
+    .maybeSingle()
 
   if (error && error.code !== 'PGRST116') {
     console.error('Error fetching promotion:', error)
