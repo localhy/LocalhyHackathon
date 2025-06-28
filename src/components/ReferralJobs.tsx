@@ -287,16 +287,6 @@ const ReferralJobs = () => {
     'Real Estate', 'Education', 'Entertainment', 'Transportation', 'Home Services', 'Other'
   ]
 
-  // Location options
-  const locations = [
-    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ',
-    'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',
-    'Austin, TX', 'Jacksonville, FL', 'Fort Worth, TX', 'Columbus, OH', 'Charlotte, NC',
-    'San Francisco, CA', 'Indianapolis, IN', 'Seattle, WA', 'Denver, CO', 'Washington, DC',
-    'Boston, MA', 'El Paso, TX', 'Nashville, TN', 'Detroit, MI', 'Oklahoma City, OK',
-    'Portland, OR', 'Las Vegas, NV', 'Memphis, TN', 'Louisville, KY', 'Baltimore, MD'
-  ].sort()
-
   useEffect(() => {
     loadJobs(true)
   }, [searchQuery, selectedCategory, selectedLocation, commissionTypeFilter, urgencyFilter, sortBy])
@@ -317,7 +307,7 @@ const ReferralJobs = () => {
       const offset = currentPage * limit
       
       // Fetch jobs from database
-      let fetchedJobs = await getReferralJobs(limit + 1, offset, user?.id)
+      let fetchedJobs = await getReferralJobs(limit + 1, offset, user?.id, selectedLocation)
       
       // Client-side filtering (in a real app, this would be done server-side)
       if (searchQuery) {
@@ -330,12 +320,6 @@ const ReferralJobs = () => {
       
       if (selectedCategory) {
         fetchedJobs = fetchedJobs.filter(job => job.category === selectedCategory)
-      }
-
-      if (selectedLocation) {
-        fetchedJobs = fetchedJobs.filter(job => 
-          job.location && job.location.toLowerCase().includes(selectedLocation.toLowerCase())
-        )
       }
       
       if (commissionTypeFilter !== 'all') {
@@ -714,16 +698,16 @@ const ReferralJobs = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Locations</option>
-                    {locations.map(location => (
-                      <option key={location} value={location}>{location}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      placeholder="Enter any location..."
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
 
                 <div>

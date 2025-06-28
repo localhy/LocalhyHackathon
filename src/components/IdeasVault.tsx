@@ -223,20 +223,6 @@ const IdeasVault = () => {
     'Real Estate', 'Transportation', 'Entertainment', 'Professional Services', 'Retail', 'Other'
   ]
 
-  // Location options - cities and states for better UX
-  const locations = [
-    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ',
-    'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',
-    'Austin, TX', 'Jacksonville, FL', 'Fort Worth, TX', 'Columbus, OH', 'Charlotte, NC',
-    'San Francisco, CA', 'Indianapolis, IN', 'Seattle, WA', 'Denver, CO', 'Washington, DC',
-    'Boston, MA', 'El Paso, TX', 'Nashville, TN', 'Detroit, MI', 'Oklahoma City, OK',
-    'Portland, OR', 'Las Vegas, NV', 'Memphis, TN', 'Louisville, KY', 'Baltimore, MD',
-    'Milwaukee, WI', 'Albuquerque, NM', 'Tucson, AZ', 'Fresno, CA', 'Sacramento, CA',
-    'Mesa, AZ', 'Kansas City, MO', 'Atlanta, GA', 'Long Beach, CA', 'Colorado Springs, CO',
-    'Raleigh, NC', 'Miami, FL', 'Virginia Beach, VA', 'Omaha, NE', 'Oakland, CA',
-    'Minneapolis, MN', 'Tulsa, OK', 'Arlington, TX', 'Tampa, FL', 'New Orleans, LA'
-  ].sort()
-
   useEffect(() => {
     loadIdeas(true)
   }, [searchQuery, selectedCategory, selectedLocation, priceFilter, sortBy])
@@ -257,7 +243,7 @@ const IdeasVault = () => {
       const offset = currentPage * limit
       
       // Apply filters and search
-      let fetchedIdeas = await getIdeas(limit + 1, offset, user?.id) // Fetch one extra to check if there are more
+      let fetchedIdeas = await getIdeas(limit + 1, offset, user?.id, selectedLocation)
       
       // Client-side filtering (in a real app, this would be done server-side)
       if (searchQuery) {
@@ -270,12 +256,6 @@ const IdeasVault = () => {
       
       if (selectedCategory) {
         fetchedIdeas = fetchedIdeas.filter(idea => idea.category === selectedCategory)
-      }
-
-      if (selectedLocation) {
-        fetchedIdeas = fetchedIdeas.filter(idea => 
-          idea.location && idea.location.toLowerCase().includes(selectedLocation.toLowerCase())
-        )
       }
       
       if (priceFilter !== 'all') {
@@ -671,16 +651,16 @@ const IdeasVault = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  >
-                    <option value="">All Locations</option>
-                    {locations.map(location => (
-                      <option key={location} value={location}>{location}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      placeholder="Enter any location..."
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
                 </div>
 
                 <div>

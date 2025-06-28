@@ -590,7 +590,7 @@ export const userHasBusinessProfile = async (userId: string): Promise<boolean> =
 }
 
 // Ideas Functions
-export const getIdeas = async (limit = 10, offset = 0, userId?: string): Promise<Idea[]> => {
+export const getIdeas = async (limit = 10, offset = 0, userId?: string, locationQuery?: string): Promise<Idea[]> => {
   let query = supabase
     .from('ideas')
     .select(`
@@ -599,7 +599,13 @@ export const getIdeas = async (limit = 10, offset = 0, userId?: string): Promise
     `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    
+  // Add location filter if provided
+  if (locationQuery) {
+    query = query.ilike('location', `%${locationQuery}%`)
+  }
+    
+  query = query.range(offset, offset + limit - 1)
 
   const { data, error } = await query
 
@@ -809,7 +815,7 @@ export const bookmarkIdea = async (ideaId: string, userId: string): Promise<bool
 }
 
 // Referral Jobs Functions
-export const getReferralJobs = async (limit = 10, offset = 0, userId?: string): Promise<ReferralJob[]> => {
+export const getReferralJobs = async (limit = 10, offset = 0, userId?: string, locationQuery?: string): Promise<ReferralJob[]> => {
   let query = supabase
     .from('referral_jobs')
     .select(`
@@ -818,7 +824,13 @@ export const getReferralJobs = async (limit = 10, offset = 0, userId?: string): 
     `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    
+  // Add location filter if provided
+  if (locationQuery) {
+    query = query.ilike('location', `%${locationQuery}%`)
+  }
+    
+  query = query.range(offset, offset + limit - 1)
 
   const { data, error } = await query
 
@@ -1026,8 +1038,8 @@ export const likeReferralJob = async (jobId: string, userId: string): Promise<bo
 }
 
 // Tools Functions
-export const getTools = async (limit = 10, offset = 0): Promise<Tool[]> => {
-  const { data, error } = await supabase
+export const getTools = async (limit = 10, offset = 0, locationQuery?: string): Promise<Tool[]> => {
+  let query = supabase
     .from('tools')
     .select(`
       *,
@@ -1035,7 +1047,15 @@ export const getTools = async (limit = 10, offset = 0): Promise<Tool[]> => {
     `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    
+  // Add location filter if provided
+  if (locationQuery) {
+    query = query.ilike('location', `%${locationQuery}%`)
+  }
+    
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error } = await query
 
   if (error) {
     console.error('Error fetching tools:', error)

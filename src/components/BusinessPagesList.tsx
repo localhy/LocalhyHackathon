@@ -136,14 +136,6 @@ const BusinessPagesList = () => {
     'Real Estate', 'Education', 'Entertainment', 'Transportation', 'Home Services', 'Other'
   ]
 
-  // Location options
-  const locations = [
-    'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ',
-    'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',
-    'Austin, TX', 'Jacksonville, FL', 'Fort Worth, TX', 'Columbus, OH', 'Charlotte, NC',
-    'San Francisco, CA', 'Indianapolis, IN', 'Seattle, WA', 'Denver, CO', 'Washington, DC'
-  ].sort()
-
   useEffect(() => {
     loadBusinesses(true)
   }, [searchQuery, selectedCategory, selectedLocation])
@@ -172,7 +164,6 @@ const BusinessPagesList = () => {
         `)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1)
       
       // Apply filters
       if (selectedCategory) {
@@ -180,15 +171,11 @@ const BusinessPagesList = () => {
       }
       
       if (selectedLocation) {
-        // Split location into city, state
-        const [city, state] = selectedLocation.split(', ')
-        if (city && state) {
-          query = query.eq('city', city).eq('state', state)
-        } else {
-          // If location format is different, try to match any part
-          query = query.or(`city.ilike.%${selectedLocation}%,state.ilike.%${selectedLocation}%,country.ilike.%${selectedLocation}%`)
-        }
+        // Use ilike for location search across city, state, and country fields
+        query = query.or(`city.ilike.%${selectedLocation}%,state.ilike.%${selectedLocation}%,country.ilike.%${selectedLocation}%`)
       }
+      
+      query = query.range(offset, offset + limit - 1)
       
       const { data, error: fetchError } = await query
       
@@ -453,16 +440,16 @@ const BusinessPagesList = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Locations</option>
-                    {locations.map(location => (
-                      <option key={location} value={location}>{location}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      placeholder="Enter any location..."
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
 
                 {activeFiltersCount > 0 && (
