@@ -298,6 +298,7 @@ export interface CreditBalance {
   cashCredits: number
   purchasedCredits: number
   freeCredits: number
+  fiatBalance: number
 }
 
 export interface CommunityPost {
@@ -1544,19 +1545,20 @@ export const subscribeToCommunityPosts = (callback: (payload: any) => void) => {
 export const getUserCredits = async (userId: string): Promise<CreditBalance> => {
   const { data, error } = await supabase
     .from('user_profiles')
-    .select('credits, free_credits, purchased_credits')
+    .select('credits, free_credits, purchased_credits, fiat_balance')
     .eq('id', userId)
     .single()
 
   if (error) {
     console.error('Error fetching user credits:', error)
-    return { cashCredits: 0, purchasedCredits: 0, freeCredits: 0 }
+    return { cashCredits: 0, purchasedCredits: 0, freeCredits: 0, fiatBalance: 0 }
   }
 
   return {
     cashCredits: data?.credits || 0,
     purchasedCredits: data?.purchased_credits || 0,
-    freeCredits: data?.free_credits || 0
+    freeCredits: data?.free_credits || 0,
+    fiatBalance: Number(data?.fiat_balance) || 0
   }
 }
 
@@ -1710,6 +1712,51 @@ export const processWithdrawal = async (userId: string, amount: number): Promise
     return true
   } catch (error: any) {
     console.error('Error processing withdrawal:', error)
+    throw new Error(error.message || 'Failed to process withdrawal')
+  }
+}
+
+export const processWithdrawalWithPaypal = async (userId: string, amount: number, paypalEmail: string): Promise<boolean> => {
+  try {
+    // Validate minimum withdrawal amount
+    if (amount < 50) {
+      throw new Error('Minimum withdrawal amount is $50')
+    }
+
+    // Validate PayPal email
+    if (!paypalEmail || !paypalEmail.includes('@')) {
+      throw new Error('Valid PayPal email is required')
+    }
+
+    // Get user profile to check balance
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('fiat_balance')
+      .eq('id', userId)
+      .single()
+
+    if (!userProfile) {
+      throw new Error('User profile not found')
+    }
+
+    if (Number(userProfile.fiat_balance || 0) < amount) {
+      throw new Error('Insufficient balance for withdrawal')
+    }
+
+    // Use the database function to process withdrawal with PayPal details
+    const { error } = await supabase.rpc('process_withdrawal_with_paypal', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_paypal_email: paypalEmail
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return true
+  } catch (error: any) {
+    console.error('Error processing withdrawal with PayPal:', error)
     throw new Error(error.message || 'Failed to process withdrawal')
   }
 }
