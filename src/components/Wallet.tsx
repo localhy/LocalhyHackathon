@@ -9,11 +9,37 @@ import { supabase } from '../lib/supabase'
 
 // Credit package options
 const CREDIT_PACKAGES = [
-  { credits: 20, price: 20, popular: false },
-  { credits: 50, price: 50, popular: false },
-  { credits: 100, price: 100, popular: true, bonus: 200 },
-  { credits: 500, price: 500, popular: false }
-]
+  { 
+    credits: 20, 
+    price: 20, 
+    popular: false,
+    paypalLink: "https://www.paypal.com/ncp/payment/AXVWLDYSE65YU",
+    stripeLink: "https://www.creem.io/payment/prod_4DcD1pV6lnQZUeUO3OCF1L"
+  },
+  { 
+    credits: 50, 
+    price: 50, 
+    popular: false,
+    paypalLink: "https://www.paypal.com/ncp/payment/SVHRUH3LJJL64",
+    stripeLink: "https://www.creem.io/payment/prod_6qXRLWHFQQmHSjKKKNK87D"
+  },
+  { 
+    credits: 100, 
+    price: 100, 
+    popular: true, 
+    bonus: 200,
+    paypalLink: "https://www.paypal.com/ncp/payment/LYEXERLJ7ENTE",
+    stripeLink: "https://www.creem.io/payment/prod_4pVvvZGzoipEUzbG1SD7b1"
+  },
+  { 
+    credits: 500, 
+    price: 500, 
+    popular: false,
+    paypalLink: "https://www.paypal.com/ncp/payment/36JVB2CQU2USY",
+    stripeLink: "https://www.creem.io/payment/prod_1bkvzEnW0sW836wtlxhn9w"
+  }
+];
+
 
 // Referral job posting cost
 export const REFERRAL_JOB_POSTING_COST = 10
@@ -652,7 +678,7 @@ const Wallet = () => {
                 
                 <div className="flex space-x-2">
                   <a
-                    href="https://www.paypal.com/paypalme/yourusername"
+                    href={pkg.paypalLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
@@ -662,7 +688,7 @@ const Wallet = () => {
                   </a>
                   
                   <a
-                    href="https://buy.stripe.com/yourlink"
+                    href={pkg.stripeLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
