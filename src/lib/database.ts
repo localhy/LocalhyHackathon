@@ -1,135 +1,67 @@
-import { supabase } from './supabase'
+import { createClient } from '@supabase/supabase-js'
 
-// Types
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Helper function to get the current user's ID
+export const getCurrentUserId = async () => {
+  const { data } = await supabase.auth.getUser()
+  return data?.user?.id
+}
+
+// Helper function to get the current user's ID from the auth context
+export const uid = () => {
+  const user = supabase.auth.getUser()
+  return user.data?.user?.id
+}
+
+// User Profile Types
 export interface UserProfile {
   id: string
+  name: string
+  bio?: string
+  location?: string
+  user_type?: 'business-owner' | 'referrer' | 'idea-creator' | 'other'
+  avatar_url?: string
+  newsletter_opt_in?: boolean
+  created_at?: string
+  updated_at?: string
+  credits?: number
+  fiat_balance?: number
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
+  paypal_email?: string
+  free_credits?: number
+  purchased_credits?: number
+}
+
+export interface UpdateUserProfileData {
   name?: string
   bio?: string
   location?: string
   user_type?: 'business-owner' | 'referrer' | 'idea-creator' | 'other'
   avatar_url?: string
   newsletter_opt_in?: boolean
-  created_at: string
-  updated_at: string
-  credits?: number
-  free_credits?: number
-  purchased_credits?: number
-  fiat_balance?: number
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
   paypal_email?: string
-  // Contact and social media fields
-  phone?: string
-  website?: string
-  linkedin?: string
-  twitter?: string
-  facebook?: string
-  instagram?: string
 }
 
-export interface BusinessProfile {
-  id: string
-  user_id: string
-  business_name: string
-  category: string
-  city?: string
-  state?: string
-  country?: string
-  description: string
-  address?: string
-  operating_hours?: Record<string, any>
-  thumbnail_url: string
-  cover_photo_url?: string
-  gallery_urls?: string[]
-  youtube_video_url?: string
-  referral_reward_amount?: number
-  referral_reward_type?: 'percentage' | 'fixed'
-  referral_cta_link?: string
-  promo_tagline?: string
-  email: string
-  phone?: string
-  website?: string
-  linkedin?: string
-  twitter?: string
-  facebook?: string
-  instagram?: string
-  years_in_business?: number
-  certifications_urls?: string[]
-  customer_reviews?: any[]
-  enable_referrals: boolean
-  display_earnings_publicly: boolean
-  enable_questions_comments: boolean
-  status: 'pending' | 'active' | 'inactive'
-  created_at: string
-  updated_at: string
-  user_profile?: UserProfile
-}
-
-export interface CreateBusinessProfileData {
-  user_id: string
-  business_name: string
-  category: string
-  city?: string
-  state?: string
-  country?: string
-  description: string
-  address?: string
-  operating_hours?: Record<string, any>
-  thumbnail_url: string
-  cover_photo_url?: string
-  gallery_urls?: string[]
-  youtube_video_url?: string
-  referral_reward_amount?: number
-  referral_reward_type?: 'percentage' | 'fixed'
-  referral_cta_link?: string
-  promo_tagline?: string
-  email: string
-  phone?: string
-  website?: string
-  linkedin?: string
-  twitter?: string
-  facebook?: string
-  instagram?: string
-  years_in_business?: number
-  certifications_urls?: string[]
-  customer_reviews?: any[]
-  enable_referrals?: boolean
-  display_earnings_publicly?: boolean
-  enable_questions_comments?: boolean
-  status?: 'pending' | 'active' | 'inactive'
-}
-
-export interface UpdateBusinessProfileData {
-  business_name?: string
-  category?: string
-  city?: string
-  state?: string
-  country?: string
-  description?: string
-  address?: string
-  operating_hours?: Record<string, any>
-  thumbnail_url?: string
-  cover_photo_url?: string
-  gallery_urls?: string[]
-  youtube_video_url?: string
-  referral_reward_amount?: number
-  referral_reward_type?: 'percentage' | 'fixed'
-  referral_cta_link?: string
-  promo_tagline?: string
-  email?: string
-  phone?: string
-  website?: string
-  linkedin?: string
-  twitter?: string
-  facebook?: string
-  instagram?: string
-  years_in_business?: number
-  certifications_urls?: string[]
-  customer_reviews?: any[]
-  enable_referrals?: boolean
-  display_earnings_publicly?: boolean
-  enable_questions_comments?: boolean
-  status?: 'pending' | 'active' | 'inactive'
-}
-
+// Idea Types
 export interface Idea {
   id: string
   user_id: string
@@ -139,7 +71,7 @@ export interface Idea {
   price: number
   views: number
   likes: number
-  status: string
+  status: 'active' | 'inactive' | 'deleted'
   created_at: string
   updated_at: string
   cover_image_url?: string
@@ -148,15 +80,32 @@ export interface Idea {
   tags?: string[]
   thumbnail_url?: string
   location?: string
+  liked_by_user?: boolean
+  bookmarked_by_user?: boolean
   user_profiles?: {
     name: string
     avatar_url?: string
+    bio?: string
+    user_type?: string
   }
-  liked_by_user?: boolean
-  bookmarked_by_user?: boolean
   is_promoted?: boolean
 }
 
+export interface UpdateIdeaData {
+  title?: string
+  description?: string
+  category?: string
+  price?: number
+  status?: 'active' | 'inactive' | 'deleted'
+  cover_image_url?: string
+  problem_summary?: string
+  solution_overview?: string
+  tags?: string[]
+  thumbnail_url?: string
+  location?: string
+}
+
+// Referral Job Types
 export interface ReferralJob {
   id: string
   user_id: string
@@ -170,7 +119,7 @@ export interface ReferralJob {
   urgency: 'low' | 'medium' | 'high'
   requirements?: string
   applicants_count: number
-  status: string
+  status: 'active' | 'inactive' | 'completed' | 'deleted'
   created_at: string
   updated_at: string
   referral_type?: string
@@ -178,16 +127,35 @@ export interface ReferralJob {
   website?: string
   cta_text?: string
   terms?: string
+  likes?: number
+  liked_by_user?: boolean
+  bookmarked_by_user?: boolean
   user_profiles?: {
     name: string
     avatar_url?: string
   }
-  liked_by_user?: boolean
-  bookmarked_by_user?: boolean
-  likes?: number
   is_promoted?: boolean
 }
 
+export interface UpdateReferralJobData {
+  title?: string
+  business_name?: string
+  description?: string
+  commission?: number
+  commission_type?: 'percentage' | 'fixed'
+  location?: string
+  category?: string
+  urgency?: 'low' | 'medium' | 'high'
+  requirements?: string
+  status?: 'active' | 'inactive' | 'completed' | 'deleted'
+  referral_type?: string
+  logo_url?: string
+  website?: string
+  cta_text?: string
+  terms?: string
+}
+
+// Tool Types
 export interface Tool {
   id: string
   user_id: string
@@ -201,7 +169,7 @@ export interface Tool {
   rating: number
   tags?: string[]
   featured: boolean
-  status: string
+  status: 'active' | 'inactive' | 'pending' | 'deleted'
   created_at: string
   updated_at: string
   location?: string
@@ -212,23 +180,50 @@ export interface Tool {
   is_promoted?: boolean
 }
 
+// Comment Types
 export interface Comment {
   id: string
   content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
   user_id: string
   parent_id?: string
   content: string
   likes: number
   created_at: string
   updated_at: string
+  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
+  liked_by_user?: boolean
   user_profile?: {
     name: string
     avatar_url?: string
   }
-  liked_by_user?: boolean
 }
 
+export interface CreateCommentData {
+  content_id: string
+  user_id: string
+  parent_id?: string
+  content: string
+  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
+}
+
+// Message Types
+export interface Message {
+  id: string
+  conversation_id: string
+  sender_id: string
+  content: string
+  read: boolean
+  created_at: string
+}
+
+export interface CreateMessageData {
+  sender_id: string
+  recipient_id: string
+  content: string
+  subject?: string
+}
+
+// Notification Types
 export interface Notification {
   id: string
   user_id: string
@@ -240,67 +235,49 @@ export interface Notification {
   created_at: string
 }
 
-export interface Message {
-  id: string
-  conversation_id: string
-  sender_id: string
-  content: string
-  read: boolean
-  created_at: string
-}
-
-export interface Transaction {
+// Business Profile Types
+export interface BusinessProfile {
   id: string
   user_id: string
-  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion' | 'credit_transfer_sent' | 'credit_transfer_received'
-  amount: number
-  credits: number
-  currency: string
+  business_name: string
+  category: string
+  city?: string
+  state?: string
+  country?: string
   description: string
-  status: 'pending' | 'completed' | 'failed' | 'cancelled'
-  payment_method?: string
-  payment_id?: string
-  withdrawal_method?: string
-  withdrawal_details?: any
-  metadata?: any
+  address?: string
+  operating_hours?: Record<string, { open?: string, close?: string }>
+  thumbnail_url: string
+  cover_photo_url?: string
+  gallery_urls?: string[]
+  youtube_video_url?: string
+  referral_reward_amount?: number
+  referral_reward_type?: 'percentage' | 'fixed'
+  referral_cta_link?: string
+  promo_tagline?: string
+  email: string
+  phone?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
+  facebook?: string
+  instagram?: string
+  years_in_business?: number
+  certifications_urls?: string[]
+  customer_reviews?: Array<{ name: string, rating: number, text: string, date: string }>
+  enable_referrals: boolean
+  display_earnings_publicly: boolean
+  enable_questions_comments: boolean
+  status: 'pending' | 'active' | 'inactive'
   created_at: string
   updated_at: string
+  user_profile?: {
+    name: string
+    avatar_url?: string
+  }
 }
 
-export interface Promotion {
-  id: string
-  user_id: string
-  content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool'
-  promotion_type: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
-  cost_credits: number
-  start_date: string
-  end_date: string
-  status: 'active' | 'expired' | 'pending' | 'cancelled'
-  views_gained?: number
-  clicks_gained?: number
-  metadata?: any
-  created_at: string
-  updated_at: string
-}
-
-export interface WalletStats {
-  currentCredits: number
-  purchasedCredits: number
-  freeCredits: number
-  fiatBalance: number
-  totalEarned: number
-  totalSpent: number
-  pendingEarnings: number
-}
-
-export interface CreditBalance {
-  cashCredits: number
-  purchasedCredits: number
-  freeCredits: number
-  fiatBalance: number
-}
-
+// Community Post Types
 export interface CommunityPost {
   id: string
   user_id: string
@@ -312,112 +289,34 @@ export interface CommunityPost {
   comments_count: number
   created_at: string
   updated_at: string
-  user_name: string
+  user_name?: string
   user_avatar_url?: string
   user_type?: string
-  liked_by_user: boolean
+  liked_by_user?: boolean
 }
 
-// Create types for form data
-export interface CreateIdeaData {
+// Transaction Types
+export interface Transaction {
+  id: string
   user_id: string
-  title: string
+  type: 'credit_purchase' | 'credit_usage' | 'withdrawal' | 'refund' | 'credit_earning' | 'credit_to_fiat_conversion' | 'credit_transfer_sent' | 'credit_transfer_received'
+  amount: number
+  credits: number
+  currency: string
   description: string
-  category: string
-  problem_summary?: string
-  solution_overview?: string
-  price?: number
-  tags?: string[]
-  location?: string
-  cover_image_url?: string
-  thumbnail_url?: string
+  status: 'pending' | 'completed' | 'failed' | 'cancelled'
+  payment_method?: string
+  payment_id?: string
+  metadata?: any
+  created_at: string
+  updated_at: string
+  withdrawal_method?: string
+  withdrawal_details?: any
 }
 
-export interface CreateToolData {
-  user_id: string
-  title: string
-  description: string
-  category: string
-  type: 'free' | 'paid' | 'premium'
-  price?: number
-  download_url: string
-  tags?: string[]
-  location?: string
-}
-
-export interface CreateReferralJobData {
-  user_id: string
-  title: string
-  business_name: string
-  description: string
-  commission: number
-  commission_type: 'percentage' | 'fixed'
-  location: string
-  category: string
-  urgency?: 'low' | 'medium' | 'high'
-  requirements?: string
-  referral_type?: string
-  logo_url?: string
-  website?: string
-  cta_text?: string
-  terms?: string
-}
-
-export interface UpdateIdeaData {
-  title?: string
-  description?: string
-  category?: string
-  problem_summary?: string
-  solution_overview?: string
-  price?: number
-  tags?: string[]
-  location?: string
-  cover_image_url?: string
-  thumbnail_url?: string
-}
-
-export interface UpdateReferralJobData {
-  title?: string
-  business_name?: string
-  description?: string
-  commission?: number
-  commission_type?: 'percentage' | 'fixed'
-  location?: string
-  category?: string
-  urgency?: 'low' | 'medium' | 'high'
-  requirements?: string
-  referral_type?: string
-  logo_url?: string
-  website?: string
-  cta_text?: string
-  terms?: string
-}
-
-export interface CreateCommentData {
-  content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post'
-  user_id: string
-  parent_id?: string
-  content: string
-}
-
-export interface CreateMessageData {
-  sender_id: string
-  recipient_id: string
-  content: string
-  subject?: string
-}
-
-export interface CreatePromotionData {
-  user_id: string
-  content_id: string
-  content_type: 'idea' | 'referral_job' | 'tool'
-  promotion_type: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement'
-  duration_days: number
-  cost_credits: number
-}
-
-export interface CreatePromotionAdData {
+// Promotion Types
+export interface Promotion {
+  id: string
   user_id: string
   content_id: string
   content_type: 'idea' | 'referral_job' | 'tool'
@@ -425,34 +324,12 @@ export interface CreatePromotionAdData {
   cost_credits: number
   start_date: string
   end_date: string
+  status: 'active' | 'expired' | 'pending' | 'cancelled'
+  views_gained: number
+  clicks_gained: number
   metadata?: any
-}
-
-export interface CreateCommunityPostData {
-  user_id: string
-  content: string
-  image_url?: string
-  video_url?: string
-  location?: string
-}
-
-// Constants
-export const REFERRAL_JOB_POSTING_COST = 10 // Credits required to post a referral job
-
-// Promotion pricing function
-export const getPromotionPricing = (
-  promotionType: 'featured_homepage' | 'boosted_search' | 'category_spotlight' | 'premium_placement',
-  durationDays: number
-): number => {
-  // Define pricing per day based on promotion type
-  const dailyPricing = {
-    featured_homepage: 15,
-    boosted_search: 5,
-    category_spotlight: 7,
-    premium_placement: 10
-  }
-
-  return dailyPricing[promotionType] * durationDays
+  created_at: string
+  updated_at: string
 }
 
 // User Profile Functions
@@ -471,7 +348,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
   return data
 }
 
-export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> => {
+export const updateUserProfile = async (userId: string, updates: UpdateUserProfileData): Promise<UserProfile | null> => {
   const { data, error } = await supabase
     .from('user_profiles')
     .update(updates)
@@ -487,129 +364,63 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
   return data
 }
 
-export const updateUserPayPalEmail = async (userId: string, paypalEmail: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ paypal_email: paypalEmail })
-    .eq('id', userId)
+export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${userId}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+  const filePath = `avatars/${fileName}`
 
-  if (error) {
-    console.error('Error updating PayPal email:', error)
-    return false
-  }
+  const { error: uploadError } = await supabase.storage
+    .from('user-avatars')
+    .upload(filePath, file)
 
-  return true
-}
-
-// Business Profile Functions
-export const createBusinessProfile = async (data: CreateBusinessProfileData): Promise<BusinessProfile | null> => {
-  const { data: profile, error } = await supabase
-    .from('business_profiles')
-    .insert(data)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating business profile:', error)
-    throw new Error(error.message)
-  }
-
-  return profile
-}
-
-export const getBusinessProfileById = async (id: string): Promise<BusinessProfile | null> => {
-  const { data, error } = await supabase
-    .from('business_profiles')
-    .select(`
-      *,
-      user_profile:user_profiles(*)
-    `)
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    console.error('Error fetching business profile:', error)
+  if (uploadError) {
+    console.error('Error uploading avatar:', uploadError)
     return null
   }
 
-  return data
+  const { data } = supabase.storage
+    .from('user-avatars')
+    .getPublicUrl(filePath)
+
+  return data.publicUrl
 }
 
-export const getUserBusinessProfiles = async (userId: string): Promise<BusinessProfile[]> => {
-  const { data, error } = await supabase
-    .from('business_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching user business profiles:', error)
-    return []
-  }
-
-  return data || []
+export const subscribeToUserProfile = (userId: string, callback: (payload: any) => void) => {
+  return supabase
+    .channel(`user-profile-${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'user_profiles',
+        filter: `id=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe()
 }
 
-export const updateBusinessProfile = async (id: string, updates: UpdateBusinessProfileData): Promise<BusinessProfile | null> => {
-  const { data, error } = await supabase
-    .from('business_profiles')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating business profile:', error)
-    return null
-  }
-
-  return data
-}
-
-export const deleteBusinessProfile = async (id: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('business_profiles')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    console.error('Error deleting business profile:', error)
-    return false
-  }
-
-  return true
-}
-
-export const userHasBusinessProfile = async (userId: string): Promise<boolean> => {
-  const { data, error } = await supabase.rpc('user_has_business_profile', {
-    p_user_id: userId
-  })
-
-  if (error) {
-    console.error('Error checking if user has business profile:', error)
-    return false
-  }
-
-  return data
-}
-
-// Ideas Functions
-export const getIdeas = async (limit = 10, offset = 0, userId?: string, locationQuery?: string): Promise<Idea[]> => {
+// Idea Functions
+export const getIdeas = async (limit: number, offset: number, userId?: string, location?: string): Promise<Idea[]> => {
   let query = supabase
     .from('ideas')
     .select(`
       *,
-      user_profiles!inner(name, avatar_url)
+      user_profiles (
+        name,
+        avatar_url,
+        bio,
+        user_type
+      )
     `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    
-  // Add location filter if provided
-  if (locationQuery) {
-    query = query.ilike('location', `%${locationQuery}%`)
+    .range(offset, offset + limit - 1)
+
+  if (location) {
+    query = query.ilike('location', `%${location}%`)
   }
-    
-  query = query.range(offset, offset + limit - 1)
 
   const { data, error } = await query
 
@@ -618,58 +429,63 @@ export const getIdeas = async (limit = 10, offset = 0, userId?: string, location
     return []
   }
 
-  // Add user interaction data if userId is provided
-  if (userId && data) {
-    const ideasWithInteractions = await Promise.all(
-      data.map(async (idea) => {
-        // Check if user liked this idea
-        const { data: likeData } = await supabase
-          .from('idea_likes')
-          .select('id')
-          .eq('idea_id', idea.id)
-          .eq('user_id', userId)
-          .maybeSingle()
+  // If user is logged in, check if they've liked or bookmarked each idea
+  if (userId) {
+    const ideas = await Promise.all(data.map(async (idea) => {
+      // Check if user has liked this idea
+      const { data: likeData } = await supabase
+        .from('idea_likes')
+        .select('id')
+        .eq('idea_id', idea.id)
+        .eq('user_id', userId)
+        .single()
 
-        // Check if user bookmarked this idea
-        const { data: bookmarkData } = await supabase
-          .from('idea_bookmarks')
-          .select('id')
-          .eq('idea_id', idea.id)
-          .eq('user_id', userId)
-          .maybeSingle()
+      // Check if user has bookmarked this idea
+      const { data: bookmarkData } = await supabase
+        .from('idea_bookmarks')
+        .select('id')
+        .eq('idea_id', idea.id)
+        .eq('user_id', userId)
+        .single()
 
-        // Check if idea is promoted
-        const { data: promotionData } = await supabase
-          .from('promotions')
-          .select('id')
-          .eq('content_id', idea.id)
-          .eq('content_type', 'idea')
-          .eq('status', 'active')
-          .gte('end_date', new Date().toISOString())
-          .maybeSingle()
+      // Check if idea has an active promotion
+      const { data: promotionData } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('content_id', idea.id)
+        .eq('content_type', 'idea')
+        .eq('status', 'active')
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString())
+        .single()
 
-        return {
-          ...idea,
-          liked_by_user: !!likeData,
-          bookmarked_by_user: !!bookmarkData,
-          is_promoted: !!promotionData
-        }
-      })
-    )
-    return ideasWithInteractions
+      return {
+        ...idea,
+        liked_by_user: !!likeData,
+        bookmarked_by_user: !!bookmarkData,
+        is_promoted: !!promotionData
+      }
+    }))
+
+    return ideas
   }
 
-  return data || []
+  return data
 }
 
-export const getIdeaById = async (id: string): Promise<Idea | null> => {
+export const getIdeaById = async (ideaId: string, userId?: string): Promise<Idea | null> => {
   const { data, error } = await supabase
     .from('ideas')
     .select(`
       *,
-      user_profiles!inner(name, avatar_url, user_type, bio)
+      user_profiles (
+        name,
+        avatar_url,
+        bio,
+        user_type
+      )
     `)
-    .eq('id', id)
+    .eq('id', ideaId)
     .single()
 
   if (error) {
@@ -677,52 +493,47 @@ export const getIdeaById = async (id: string): Promise<Idea | null> => {
     return null
   }
 
-  return data
-}
+  // Increment view count
+  await supabase.rpc('increment_idea_views', { idea_id: ideaId })
 
-export const createIdea = async (ideaData: CreateIdeaData): Promise<Idea | null> => {
-  const { data, error } = await supabase
-    .from('ideas')
-    .insert(ideaData)
-    .select()
-    .single()
+  // If user is logged in, check if they've liked or bookmarked this idea
+  if (userId) {
+    // Check if user has liked this idea
+    const { data: likeData } = await supabase
+      .from('idea_likes')
+      .select('id')
+      .eq('idea_id', ideaId)
+      .eq('user_id', userId)
+      .single()
 
-  if (error) {
-    console.error('Error creating idea:', error)
-    throw new Error(error.message)
+    // Check if user has bookmarked this idea
+    const { data: bookmarkData } = await supabase
+      .from('idea_bookmarks')
+      .select('id')
+      .eq('idea_id', ideaId)
+      .eq('user_id', userId)
+      .single()
+
+    // Check if idea has an active promotion
+    const { data: promotionData } = await supabase
+      .from('promotions')
+      .select('id')
+      .eq('content_id', ideaId)
+      .eq('content_type', 'idea')
+      .eq('status', 'active')
+      .lte('start_date', new Date().toISOString())
+      .gte('end_date', new Date().toISOString())
+      .single()
+
+    return {
+      ...data,
+      liked_by_user: !!likeData,
+      bookmarked_by_user: !!bookmarkData,
+      is_promoted: !!promotionData
+    }
   }
 
   return data
-}
-
-export const updateIdea = async (id: string, updates: UpdateIdeaData): Promise<Idea | null> => {
-  const { data, error } = await supabase
-    .from('ideas')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating idea:', error)
-    return null
-  }
-
-  return data
-}
-
-export const deleteIdea = async (id: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('ideas')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    console.error('Error deleting idea:', error)
-    return false
-  }
-
-  return true
 }
 
 export const getUserIdeas = async (userId: string): Promise<Idea[]> => {
@@ -737,104 +548,158 @@ export const getUserIdeas = async (userId: string): Promise<Idea[]> => {
     return []
   }
 
-  return data || []
+  return data
+}
+
+export const createIdea = async (idea: Omit<Idea, 'id' | 'views' | 'likes' | 'created_at' | 'updated_at'>): Promise<Idea | null> => {
+  const { data, error } = await supabase
+    .from('ideas')
+    .insert(idea)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating idea:', error)
+    return null
+  }
+
+  return data
+}
+
+export const updateIdea = async (ideaId: string, updates: UpdateIdeaData): Promise<Idea | null> => {
+  const { data, error } = await supabase
+    .from('ideas')
+    .update(updates)
+    .eq('id', ideaId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating idea:', error)
+    return null
+  }
+
+  return data
+}
+
+export const deleteIdea = async (ideaId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('ideas')
+    .delete()
+    .eq('id', ideaId)
+
+  if (error) {
+    console.error('Error deleting idea:', error)
+    return false
+  }
+
+  return true
 }
 
 export const likeIdea = async (ideaId: string, userId: string): Promise<boolean> => {
-  // Check if already liked
+  // Check if user has already liked this idea
   const { data: existingLike } = await supabase
     .from('idea_likes')
     .select('id')
     .eq('idea_id', ideaId)
     .eq('user_id', userId)
-    .maybeSingle()
+    .single()
 
   if (existingLike) {
-    // Unlike
+    // User has already liked this idea, so unlike it
     const { error } = await supabase
       .from('idea_likes')
       .delete()
-      .eq('idea_id', ideaId)
-      .eq('user_id', userId)
+      .eq('id', existingLike.id)
 
     if (error) {
       console.error('Error unliking idea:', error)
       return false
     }
 
-    // Decrement likes count
+    // Decrement like count
     await supabase.rpc('decrement_idea_likes', { idea_id: ideaId })
+
+    return true
   } else {
-    // Like
+    // User hasn't liked this idea yet, so like it
     const { error } = await supabase
       .from('idea_likes')
-      .insert({ idea_id: ideaId, user_id: userId })
+      .insert({
+        idea_id: ideaId,
+        user_id: userId
+      })
 
     if (error) {
       console.error('Error liking idea:', error)
       return false
     }
 
-    // Increment likes count
+    // Increment like count
     await supabase.rpc('increment_idea_likes', { idea_id: ideaId })
-  }
 
-  return true
+    return true
+  }
 }
 
 export const bookmarkIdea = async (ideaId: string, userId: string): Promise<boolean> => {
-  // Check if already bookmarked
+  // Check if user has already bookmarked this idea
   const { data: existingBookmark } = await supabase
     .from('idea_bookmarks')
     .select('id')
     .eq('idea_id', ideaId)
     .eq('user_id', userId)
-    .maybeSingle()
+    .single()
 
   if (existingBookmark) {
-    // Remove bookmark
+    // User has already bookmarked this idea, so remove the bookmark
     const { error } = await supabase
       .from('idea_bookmarks')
       .delete()
-      .eq('idea_id', ideaId)
-      .eq('user_id', userId)
+      .eq('id', existingBookmark.id)
 
     if (error) {
       console.error('Error removing bookmark:', error)
       return false
     }
+
+    return true
   } else {
-    // Add bookmark
+    // User hasn't bookmarked this idea yet, so add a bookmark
     const { error } = await supabase
       .from('idea_bookmarks')
-      .insert({ idea_id: ideaId, user_id: userId })
+      .insert({
+        idea_id: ideaId,
+        user_id: userId
+      })
 
     if (error) {
       console.error('Error bookmarking idea:', error)
       return false
     }
-  }
 
-  return true
+    return true
+  }
 }
 
-// Referral Jobs Functions
-export const getReferralJobs = async (limit = 10, offset = 0, userId?: string, locationQuery?: string): Promise<ReferralJob[]> => {
+// Referral Job Functions
+export const getReferralJobs = async (limit: number, offset: number, userId?: string, location?: string): Promise<ReferralJob[]> => {
   let query = supabase
     .from('referral_jobs')
     .select(`
       *,
-      user_profiles!inner(name, avatar_url)
+      user_profiles (
+        name,
+        avatar_url
+      )
     `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    
-  // Add location filter if provided
-  if (locationQuery) {
-    query = query.ilike('location', `%${locationQuery}%`)
+    .range(offset, offset + limit - 1)
+
+  if (location) {
+    query = query.ilike('location', `%${location}%`)
   }
-    
-  query = query.range(offset, offset + limit - 1)
 
   const { data, error } = await query
 
@@ -843,49 +708,52 @@ export const getReferralJobs = async (limit = 10, offset = 0, userId?: string, l
     return []
   }
 
-  // Add user interaction data if userId is provided
-  if (userId && data) {
-    const jobsWithInteractions = await Promise.all(
-      data.map(async (job) => {
-        // Check if user liked this job
-        const { data: likeData } = await supabase
-          .from('referral_job_likes')
-          .select('id')
-          .eq('referral_job_id', job.id)
-          .eq('user_id', userId)
-          .maybeSingle()
+  // If user is logged in, check if they've liked each job
+  if (userId) {
+    const jobs = await Promise.all(data.map(async (job) => {
+      // Check if user has liked this job
+      const { data: likeData } = await supabase
+        .from('referral_job_likes')
+        .select('id')
+        .eq('referral_job_id', job.id)
+        .eq('user_id', userId)
+        .single()
 
-        // Check if job is promoted
-        const { data: promotionData } = await supabase
-          .from('promotions')
-          .select('id')
-          .eq('content_id', job.id)
-          .eq('content_type', 'referral_job')
-          .eq('status', 'active')
-          .gte('end_date', new Date().toISOString())
-          .maybeSingle()
+      // Check if job has an active promotion
+      const { data: promotionData } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('content_id', job.id)
+        .eq('content_type', 'referral_job')
+        .eq('status', 'active')
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString())
+        .single()
 
-        return {
-          ...job,
-          liked_by_user: !!likeData,
-          is_promoted: !!promotionData
-        }
-      })
-    )
-    return jobsWithInteractions
+      return {
+        ...job,
+        liked_by_user: !!likeData,
+        is_promoted: !!promotionData
+      }
+    }))
+
+    return jobs
   }
 
-  return data || []
+  return data
 }
 
-export const getReferralJobById = async (id: string, userId?: string): Promise<ReferralJob | null> => {
+export const getReferralJobById = async (jobId: string, userId?: string): Promise<ReferralJob | null> => {
   const { data, error } = await supabase
     .from('referral_jobs')
     .select(`
       *,
-      user_profiles!inner(name, avatar_url, user_type, bio)
+      user_profiles (
+        name,
+        avatar_url
+      )
     `)
-    .eq('id', id)
+    .eq('id', jobId)
     .single()
 
   if (error) {
@@ -893,78 +761,32 @@ export const getReferralJobById = async (id: string, userId?: string): Promise<R
     return null
   }
 
-  // Add user interaction data if userId is provided
-  if (userId && data) {
-    // Check if user liked this job
+  // If user is logged in, check if they've liked this job
+  if (userId) {
+    // Check if user has liked this job
     const { data: likeData } = await supabase
       .from('referral_job_likes')
       .select('id')
-      .eq('referral_job_id', data.id)
+      .eq('referral_job_id', jobId)
       .eq('user_id', userId)
-      .maybeSingle()
+      .single()
+
+    // Check if job has an active promotion
+    const { data: promotionData } = await supabase
+      .from('promotions')
+      .select('id')
+      .eq('content_id', jobId)
+      .eq('content_type', 'referral_job')
+      .eq('status', 'active')
+      .lte('start_date', new Date().toISOString())
+      .gte('end_date', new Date().toISOString())
+      .single()
 
     return {
       ...data,
-      liked_by_user: !!likeData
+      liked_by_user: !!likeData,
+      is_promoted: !!promotionData
     }
-  }
-
-  return data
-}
-
-export const createReferralJobWithPayment = async (jobData: CreateReferralJobData): Promise<ReferralJob | null> => {
-  // Check if user has enough credits (combined free and cash)
-  const { data: userProfile } = await supabase
-    .from('user_profiles')
-    .select('credits, free_credits, purchased_credits')
-    .eq('id', jobData.user_id)
-    .single()
-
-  const totalCredits = (userProfile?.credits || 0) + (userProfile?.free_credits || 0) + (userProfile?.purchased_credits || 0)
-  
-  if (!userProfile || totalCredits < REFERRAL_JOB_POSTING_COST) {
-    throw new Error('Insufficient credits to post referral job')
-  }
-
-  // Create the referral job and deduct credits in a transaction
-  const { data, error } = await supabase.rpc('create_referral_job_with_payment', {
-    p_user_id: jobData.user_id,
-    p_title: jobData.title,
-    p_business_name: jobData.business_name,
-    p_description: jobData.description,
-    p_commission: jobData.commission,
-    p_commission_type: jobData.commission_type,
-    p_location: jobData.location,
-    p_category: jobData.category,
-    p_urgency: jobData.urgency || 'medium',
-    p_requirements: jobData.requirements,
-    p_referral_type: jobData.referral_type,
-    p_logo_url: jobData.logo_url,
-    p_website: jobData.website,
-    p_cta_text: jobData.cta_text,
-    p_terms: jobData.terms,
-    p_cost_credits: REFERRAL_JOB_POSTING_COST
-  })
-
-  if (error) {
-    console.error('Error creating referral job with payment:', error)
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-export const updateReferralJob = async (id: string, updates: UpdateReferralJobData): Promise<ReferralJob | null> => {
-  const { data, error } = await supabase
-    .from('referral_jobs')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating referral job:', error)
-    return null
   }
 
   return data
@@ -982,14 +804,45 @@ export const getUserReferralJobs = async (userId: string): Promise<ReferralJob[]
     return []
   }
 
-  return data || []
+  return data
 }
 
-export const deleteReferralJob = async (id: string): Promise<boolean> => {
+export const createReferralJob = async (job: Omit<ReferralJob, 'id' | 'applicants_count' | 'created_at' | 'updated_at'>): Promise<ReferralJob | null> => {
+  const { data, error } = await supabase
+    .from('referral_jobs')
+    .insert(job)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating referral job:', error)
+    return null
+  }
+
+  return data
+}
+
+export const updateReferralJob = async (jobId: string, updates: UpdateReferralJobData): Promise<ReferralJob | null> => {
+  const { data, error } = await supabase
+    .from('referral_jobs')
+    .update(updates)
+    .eq('id', jobId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating referral job:', error)
+    return null
+  }
+
+  return data
+}
+
+export const deleteReferralJob = async (jobId: string): Promise<boolean> => {
   const { error } = await supabase
     .from('referral_jobs')
     .delete()
-    .eq('id', id)
+    .eq('id', jobId)
 
   if (error) {
     console.error('Error deleting referral job:', error)
@@ -1000,111 +853,91 @@ export const deleteReferralJob = async (id: string): Promise<boolean> => {
 }
 
 export const likeReferralJob = async (jobId: string, userId: string): Promise<boolean> => {
-  // Check if already liked
+  // Check if user has already liked this job
   const { data: existingLike } = await supabase
     .from('referral_job_likes')
     .select('id')
     .eq('referral_job_id', jobId)
     .eq('user_id', userId)
-    .maybeSingle()
+    .single()
 
   if (existingLike) {
-    // Unlike
+    // User has already liked this job, so unlike it
     const { error } = await supabase
       .from('referral_job_likes')
       .delete()
-      .eq('referral_job_id', jobId)
-      .eq('user_id', userId)
+      .eq('id', existingLike.id)
 
     if (error) {
       console.error('Error unliking referral job:', error)
       return false
     }
 
-    // Decrement likes count
-    await supabase.rpc('decrement_referral_job_likes', { p_referral_job_id: jobId })
+    // Decrement like count
+    await supabase.rpc('decrement_referral_job_likes', { job_id: jobId })
+
+    return true
   } else {
-    // Like
+    // User hasn't liked this job yet, so like it
     const { error } = await supabase
       .from('referral_job_likes')
-      .insert({ referral_job_id: jobId, user_id: userId })
+      .insert({
+        referral_job_id: jobId,
+        user_id: userId
+      })
 
     if (error) {
       console.error('Error liking referral job:', error)
       return false
     }
 
-    // Increment likes count
-    await supabase.rpc('increment_referral_job_likes', { p_referral_job_id: jobId })
-  }
+    // Increment like count
+    await supabase.rpc('increment_referral_job_likes', { job_id: jobId })
 
-  return true
+    return true
+  }
 }
 
-// Tools Functions
-export const getTools = async (limit = 10, offset = 0, locationQuery?: string): Promise<Tool[]> => {
-  let query = supabase
+// Tool Functions
+export const getTools = async (limit: number, offset: number): Promise<Tool[]> => {
+  const { data, error } = await supabase
     .from('tools')
     .select(`
       *,
-      user_profiles!inner(name, avatar_url)
+      user_profiles (
+        name,
+        avatar_url
+      )
     `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
-    
-  // Add location filter if provided
-  if (locationQuery) {
-    query = query.ilike('location', `%${locationQuery}%`)
-  }
-    
-  query = query.range(offset, offset + limit - 1)
-
-  const { data, error } = await query
+    .range(offset, offset + limit - 1)
 
   if (error) {
     console.error('Error fetching tools:', error)
     return []
   }
 
-  // Add promotion status if data exists
-  if (data) {
-    const toolsWithPromotions = await Promise.all(
-      data.map(async (tool) => {
-        // Check if tool is promoted
-        const { data: promotionData } = await supabase
-          .from('promotions')
-          .select('id')
-          .eq('content_id', tool.id)
-          .eq('content_type', 'tool')
-          .eq('status', 'active')
-          .gte('end_date', new Date().toISOString())
-          .maybeSingle()
+  // Check if tools have active promotions
+  const toolsWithPromotions = await Promise.all(data.map(async (tool) => {
+    // Check if tool has an active promotion
+    const { data: promotionData } = await supabase
+      .from('promotions')
+      .select('id')
+      .eq('content_id', tool.id)
+      .eq('content_type', 'tool')
+      .eq('status', 'active')
+      .lte('start_date', new Date().toISOString())
+      .gte('end_date', new Date().toISOString())
+      .single()
 
-        return {
-          ...tool,
-          is_promoted: !!promotionData
-        }
-      })
-    )
-    return toolsWithPromotions
-  }
+    return {
+      ...tool,
+      is_promoted: !!promotionData
+    }
+  }))
 
-  return data || []
-}
-
-export const createTool = async (toolData: CreateToolData): Promise<Tool | null> => {
-  const { data, error } = await supabase
-    .from('tools')
-    .insert(toolData)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating tool:', error)
-    throw new Error(error.message)
-  }
-
-  return data
+  return toolsWithPromotions
 }
 
 export const getUserTools = async (userId: string): Promise<Tool[]> => {
@@ -1119,14 +952,45 @@ export const getUserTools = async (userId: string): Promise<Tool[]> => {
     return []
   }
 
-  return data || []
+  return data
 }
 
-export const deleteTool = async (id: string): Promise<boolean> => {
+export const createTool = async (tool: Omit<Tool, 'id' | 'downloads_count' | 'rating' | 'created_at' | 'updated_at'>): Promise<Tool | null> => {
+  const { data, error } = await supabase
+    .from('tools')
+    .insert(tool)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating tool:', error)
+    return null
+  }
+
+  return data
+}
+
+export const updateTool = async (toolId: string, updates: Partial<Tool>): Promise<Tool | null> => {
+  const { data, error } = await supabase
+    .from('tools')
+    .update(updates)
+    .eq('id', toolId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating tool:', error)
+    return null
+  }
+
+  return data
+}
+
+export const deleteTool = async (toolId: string): Promise<boolean> => {
   const { error } = await supabase
     .from('tools')
     .delete()
-    .eq('id', id)
+    .eq('id', toolId)
 
   if (error) {
     console.error('Error deleting tool:', error)
@@ -1136,96 +1000,16 @@ export const deleteTool = async (id: string): Promise<boolean> => {
   return true
 }
 
-// Community Posts Functions
-export const createCommunityPost = async (postData: CreateCommunityPostData): Promise<CommunityPost | null> => {
-  const { data, error } = await supabase
-    .from('community_posts')
-    .insert(postData)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating community post:', error)
-    throw new Error(error.message)
-  }
-
-  // Get user profile for the new post
-  const { data: userProfile } = await supabase
-    .from('user_profiles')
-    .select('name, avatar_url, user_type')
-    .eq('id', postData.user_id)
-    .single()
-
-  return {
-    ...data,
-    user_name: userProfile?.name || 'Anonymous',
-    user_avatar_url: userProfile?.avatar_url,
-    user_type: userProfile?.user_type,
-    liked_by_user: false,
-    type: 'community_post'
-  }
-}
-
-export const getCommunityPosts = async (limit = 10, offset = 0, userId?: string, locationQuery?: string): Promise<CommunityPost[]> => {
-  if (locationQuery && locationQuery.trim() !== '') {
-    // Use location-based query if location is provided
-    const { data, error } = await supabase.rpc('get_community_posts_by_location', {
-      p_user_id: userId || '00000000-0000-0000-0000-000000000000',
-      p_location: locationQuery,
-      p_limit: limit,
-      p_offset: offset
-    })
-
-    if (error) {
-      console.error('Error fetching community posts by location:', error)
-      return []
-    }
-
-    return data.map((post: any) => ({
-      ...post,
-      type: 'community_post'
-    })) || []
-  } else {
-    // Use standard query if no location filter
-    const { data, error } = await supabase.rpc('get_community_posts_with_interactions', {
-      p_user_id: userId || '00000000-0000-0000-0000-000000000000',
-      p_limit: limit,
-      p_offset: offset
-    })
-
-    if (error) {
-      console.error('Error fetching community posts:', error)
-      return []
-    }
-
-    return data.map((post: any) => ({
-      ...post,
-      type: 'community_post'
-    })) || []
-  }
-}
-
-export const likeCommunityPost = async (postId: string, userId: string): Promise<boolean> => {
-  const { error } = await supabase.rpc('toggle_community_post_like', {
-    p_user_id: userId,
-    p_post_id: postId
-  })
-
-  if (error) {
-    console.error('Error liking community post:', error)
-    return false
-  }
-
-  return true
-}
-
-// Comments Functions
-export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post', userId?: string): Promise<Comment[]> => {
+// Comment Functions
+export const getCommentsByContent = async (contentId: string, contentType: string, userId?: string): Promise<Comment[]> => {
   const { data, error } = await supabase
     .from('comments')
     .select(`
       *,
-      user_profile:user_profiles!inner(name, avatar_url)
+      user_profile:user_profiles (
+        name,
+        avatar_url
+      )
     `)
     .eq('content_id', contentId)
     .eq('content_type', contentType)
@@ -1236,37 +1020,39 @@ export const getCommentsByContent = async (contentId: string, contentType: 'idea
     return []
   }
 
-  // Add user interaction data if userId is provided
-  if (userId && data) {
-    const commentsWithInteractions = await Promise.all(
-      data.map(async (comment) => {
-        // Check if user liked this comment
-        const { data: likeData } = await supabase
-          .from('comment_likes')
-          .select('id')
-          .eq('comment_id', comment.id)
-          .eq('user_id', userId)
-          .maybeSingle()
+  // If user is logged in, check if they've liked each comment
+  if (userId) {
+    const commentsWithLikes = await Promise.all(data.map(async (comment) => {
+      // Check if user has liked this comment
+      const { data: likeData } = await supabase
+        .from('comment_likes')
+        .select('id')
+        .eq('comment_id', comment.id)
+        .eq('user_id', userId)
+        .single()
 
-        return {
-          ...comment,
-          liked_by_user: !!likeData
-        }
-      })
-    )
-    return commentsWithInteractions
+      return {
+        ...comment,
+        liked_by_user: !!likeData
+      }
+    }))
+
+    return commentsWithLikes
   }
 
-  return data || []
+  return data
 }
 
-export const createComment = async (commentData: CreateCommentData): Promise<Comment | null> => {
+export const createComment = async (comment: CreateCommentData): Promise<Comment | null> => {
   const { data, error } = await supabase
     .from('comments')
-    .insert(commentData)
+    .insert(comment)
     .select(`
       *,
-      user_profile:user_profiles!inner(name, avatar_url)
+      user_profile:user_profiles (
+        name,
+        avatar_url
+      )
     `)
     .single()
 
@@ -1275,95 +1061,174 @@ export const createComment = async (commentData: CreateCommentData): Promise<Com
     return null
   }
 
-  return data
+  // Increment comment count on the content
+  if (comment.content_type === 'idea') {
+    // For ideas, we don't track comment count in the table
+  } else if (comment.content_type === 'referral_job') {
+    // For referral jobs, we don't track comment count in the table
+  } else if (comment.content_type === 'community_post') {
+    await supabase.rpc('increment_community_post_comments', { post_id: comment.content_id })
+  }
+
+  return {
+    ...data,
+    liked_by_user: false
+  }
 }
 
 export const likeComment = async (commentId: string, userId: string): Promise<boolean> => {
-  // Check if already liked
+  // Check if user has already liked this comment
   const { data: existingLike } = await supabase
     .from('comment_likes')
     .select('id')
     .eq('comment_id', commentId)
     .eq('user_id', userId)
-    .maybeSingle()
+    .single()
 
   if (existingLike) {
-    // Unlike
+    // User has already liked this comment, so unlike it
     const { error } = await supabase
       .from('comment_likes')
       .delete()
-      .eq('comment_id', commentId)
-      .eq('user_id', userId)
+      .eq('id', existingLike.id)
 
     if (error) {
       console.error('Error unliking comment:', error)
       return false
     }
 
-    // Decrement likes count
+    // Decrement like count
     await supabase.rpc('decrement_comment_likes', { comment_id: commentId })
+
+    return true
   } else {
-    // Like
+    // User hasn't liked this comment yet, so like it
     const { error } = await supabase
       .from('comment_likes')
-      .insert({ comment_id: commentId, user_id: userId })
+      .insert({
+        comment_id: commentId,
+        user_id: userId
+      })
 
     if (error) {
       console.error('Error liking comment:', error)
       return false
     }
 
-    // Increment likes count
+    // Increment like count
     await supabase.rpc('increment_comment_likes', { comment_id: commentId })
-  }
 
-  return true
+    return true
+  }
 }
 
-// File Upload Functions
-export const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${Math.random()}.${fileExt}`
-  const filePath = `${fileName}`
+// Message Functions
+export const createMessage = async (message: CreateMessageData): Promise<Message | null> => {
+  // First, check if a conversation exists between these users
+  const { data: existingConversation } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`participant_1.eq.${message.sender_id},participant_2.eq.${message.sender_id}`)
+    .or(`participant_1.eq.${message.recipient_id},participant_2.eq.${message.recipient_id}`)
+    .single()
 
-  const { error: uploadError } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, file)
+  let conversationId: string
 
-  if (uploadError) {
-    console.error('Error uploading file:', uploadError)
-    throw new Error(uploadError.message)
+  if (existingConversation) {
+    // Use existing conversation
+    conversationId = existingConversation.id
+  } else {
+    // Create a new conversation
+    const { data: newConversation, error: conversationError } = await supabase
+      .from('conversations')
+      .insert({
+        participant_1: message.sender_id,
+        participant_2: message.recipient_id
+      })
+      .select()
+      .single()
+
+    if (conversationError) {
+      console.error('Error creating conversation:', conversationError)
+      return null
+    }
+
+    conversationId = newConversation.id
   }
 
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath)
+  // Now create the message
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      sender_id: message.sender_id,
+      content: message.content
+    })
+    .select()
+    .single()
 
-  return data.publicUrl
-}
-
-export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${userId}.${fileExt}`
-  const filePath = `avatars/${fileName}`
-
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(filePath, file, { upsert: true })
-
-  if (uploadError) {
-    console.error('Error uploading avatar:', uploadError)
-    throw new Error(uploadError.message)
+  if (error) {
+    console.error('Error creating message:', error)
+    return null
   }
 
-  const { data } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(filePath)
+  // Update the conversation's last_message_at timestamp
+  await supabase
+    .from('conversations')
+    .update({ last_message_at: new Date().toISOString() })
+    .eq('id', conversationId)
 
-  return data.publicUrl
+  // Create a notification for the recipient
+  await supabase
+    .from('notifications')
+    .insert({
+      user_id: message.recipient_id,
+      title: message.subject || 'New Message',
+      message: `You have a new message from ${message.sender_id}`,
+      type: 'info',
+      action_url: '/dashboard/messages'
+    })
+
+  return data
 }
 
-// Notifications Functions
+export const subscribeToUserMessages = (userId: string, callback: (payload: any) => void) => {
+  return supabase
+    .channel(`user-messages-${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `sender_id=eq.${userId}`
+      },
+      callback
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversations',
+        filter: `participant_1=eq.${userId}`
+      },
+      callback
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversations',
+        filter: `participant_2=eq.${userId}`
+      },
+      callback
+    )
+    .subscribe()
+}
+
+// Notification Functions
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
   const { data, error } = await supabase
     .from('notifications')
@@ -1376,7 +1241,7 @@ export const getUserNotifications = async (userId: string): Promise<Notification
     return []
   }
 
-  return data || []
+  return data
 }
 
 export const markNotificationAsRead = async (notificationId: string): Promise<boolean> => {
@@ -1422,65 +1287,9 @@ export const deleteNotification = async (notificationId: string): Promise<boolea
   return true
 }
 
-// Messages Functions
-export const createMessage = async (messageData: CreateMessageData): Promise<Message | null> => {
-  // First, find or create a conversation between the two users
-  const { data: existingConversation } = await supabase
-    .from('conversations')
-    .select('id')
-    .or(`and(participant_1.eq.${messageData.sender_id},participant_2.eq.${messageData.recipient_id}),and(participant_1.eq.${messageData.recipient_id},participant_2.eq.${messageData.sender_id})`)
-    .maybeSingle()
-
-  let conversationId = existingConversation?.id
-
-  if (!conversationId) {
-    // Create new conversation
-    const { data: newConversation, error: conversationError } = await supabase
-      .from('conversations')
-      .insert({
-        participant_1: messageData.sender_id,
-        participant_2: messageData.recipient_id
-      })
-      .select('id')
-      .single()
-
-    if (conversationError) {
-      console.error('Error creating conversation:', conversationError)
-      return null
-    }
-
-    conversationId = newConversation.id
-  }
-
-  // Create the message
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      sender_id: messageData.sender_id,
-      content: messageData.content
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating message:', error)
-    return null
-  }
-
-  // Update conversation's last_message_at
-  await supabase
-    .from('conversations')
-    .update({ last_message_at: new Date().toISOString() })
-    .eq('id', conversationId)
-
-  return data
-}
-
-// Real-time subscriptions
 export const subscribeToUserNotifications = (userId: string, callback: (payload: any) => void) => {
   return supabase
-    .channel('user-notifications')
+    .channel(`user-notifications-${userId}`)
     .on(
       'postgres_changes',
       {
@@ -1494,55 +1303,213 @@ export const subscribeToUserNotifications = (userId: string, callback: (payload:
     .subscribe()
 }
 
-export const subscribeToUserMessages = (userId: string, callback: (payload: any) => void) => {
-  return supabase
-    .channel('user-messages')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `sender_id=eq.${userId}`
-      },
-      callback
-    )
-    .subscribe()
+// Business Profile Functions
+export const getBusinessProfileById = async (businessId: string): Promise<BusinessProfile | null> => {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .select(`
+      *,
+      user_profile:user_profiles (
+        name,
+        avatar_url
+      )
+    `)
+    .eq('id', businessId)
+    .single()
+
+  if (error) {
+    console.error('Error fetching business profile:', error)
+    return null
+  }
+
+  return data
 }
 
-export const subscribeToUserProfile = (userId: string, callback: (payload: any) => void) => {
-  return supabase
-    .channel('user-profile')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'user_profiles',
-        filter: `id=eq.${userId}`
-      },
-      callback
-    )
-    .subscribe()
+export const getUserBusinessProfiles = async (userId: string): Promise<BusinessProfile[]> => {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user business profiles:', error)
+    return []
+  }
+
+  return data
 }
 
-export const subscribeToCommunityPosts = (callback: (payload: any) => void) => {
-  return supabase
-    .channel('community-posts')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'community_posts'
-      },
-      callback
-    )
-    .subscribe()
+export const userHasBusinessProfile = async (userId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .single()
+
+  if (error) {
+    return false
+  }
+
+  return !!data
 }
 
-// Wallet Functions
-export const getUserCredits = async (userId: string): Promise<CreditBalance> => {
+// Community Post Functions
+export const getCommunityPosts = async (limit: number, offset: number, userId?: string, location?: string): Promise<CommunityPost[]> => {
+  let query = supabase
+    .from('community_posts')
+    .select(`
+      *,
+      user_profiles (
+        name,
+        avatar_url,
+        user_type
+      )
+    `)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (location) {
+    query = query.ilike('location', `%${location}%`)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching community posts:', error)
+    return []
+  }
+
+  // Format posts with user info
+  const formattedPosts = data.map(post => ({
+    ...post,
+    user_name: post.user_profiles?.name || 'Anonymous',
+    user_avatar_url: post.user_profiles?.avatar_url,
+    user_type: post.user_profiles?.user_type
+  }))
+
+  // If user is logged in, check if they've liked each post
+  if (userId) {
+    const postsWithLikes = await Promise.all(formattedPosts.map(async (post) => {
+      // Check if user has liked this post
+      const { data: likeData } = await supabase
+        .from('community_post_likes')
+        .select('id')
+        .eq('community_post_id', post.id)
+        .eq('user_id', userId)
+        .single()
+
+      return {
+        ...post,
+        liked_by_user: !!likeData
+      }
+    }))
+
+    return postsWithLikes
+  }
+
+  return formattedPosts
+}
+
+export const createCommunityPost = async (post: { user_id: string, content: string, location?: string, image_url?: string, video_url?: string }): Promise<CommunityPost | null> => {
+  const { data, error } = await supabase
+    .from('community_posts')
+    .insert(post)
+    .select(`
+      *,
+      user_profiles (
+        name,
+        avatar_url,
+        user_type
+      )
+    `)
+    .single()
+
+  if (error) {
+    console.error('Error creating community post:', error)
+    return null
+  }
+
+  // Format post with user info
+  return {
+    ...data,
+    user_name: data.user_profiles?.name || 'Anonymous',
+    user_avatar_url: data.user_profiles?.avatar_url,
+    user_type: data.user_profiles?.user_type,
+    liked_by_user: false
+  }
+}
+
+export const likeCommunityPost = async (postId: string, userId: string): Promise<boolean> => {
+  // Check if user has already liked this post
+  const { data: existingLike } = await supabase
+    .from('community_post_likes')
+    .select('id')
+    .eq('community_post_id', postId)
+    .eq('user_id', userId)
+    .single()
+
+  if (existingLike) {
+    // User has already liked this post, so unlike it
+    const { error } = await supabase
+      .from('community_post_likes')
+      .delete()
+      .eq('id', existingLike.id)
+
+    if (error) {
+      console.error('Error unliking community post:', error)
+      return false
+    }
+
+    // Decrement like count
+    await supabase.rpc('decrement_community_post_likes', { post_id: postId })
+
+    return true
+  } else {
+    // User hasn't liked this post yet, so like it
+    const { error } = await supabase
+      .from('community_post_likes')
+      .insert({
+        community_post_id: postId,
+        user_id: userId
+      })
+
+    if (error) {
+      console.error('Error liking community post:', error)
+      return false
+    }
+
+    // Increment like count
+    await supabase.rpc('increment_community_post_likes', { post_id: postId })
+
+    return true
+  }
+}
+
+// File Upload Functions
+export const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${Math.random().toString(36).substring(2, 15)}-${Date.now()}.${fileExt}`
+  const filePath = `${fileName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, file)
+
+  if (uploadError) {
+    console.error('Error uploading file:', uploadError)
+    return null
+  }
+
+  const { data } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(filePath)
+
+  return data.publicUrl
+}
+
+// Wallet and Transaction Functions
+export const getUserCredits = async (userId: string): Promise<{ cashCredits: number, freeCredits: number, purchasedCredits: number, fiatBalance: number }> => {
   const { data, error } = await supabase
     .from('user_profiles')
     .select('credits, free_credits, purchased_credits, fiat_balance')
@@ -1551,18 +1518,18 @@ export const getUserCredits = async (userId: string): Promise<CreditBalance> => 
 
   if (error) {
     console.error('Error fetching user credits:', error)
-    return { cashCredits: 0, purchasedCredits: 0, freeCredits: 0, fiatBalance: 0 }
+    return { cashCredits: 0, freeCredits: 0, purchasedCredits: 0, fiatBalance: 0 }
   }
 
   return {
-    cashCredits: data?.credits || 0,
-    purchasedCredits: data?.purchased_credits || 0,
-    freeCredits: data?.free_credits || 0,
-    fiatBalance: Number(data?.fiat_balance) || 0
+    cashCredits: data.credits || 0,
+    freeCredits: data.free_credits || 0,
+    purchasedCredits: data.purchased_credits || 0,
+    fiatBalance: data.fiat_balance || 0
   }
 }
 
-export const getUserTransactions = async (userId: string, limit = 50): Promise<Transaction[]> => {
+export const getUserTransactions = async (userId: string, limit: number): Promise<Transaction[]> => {
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
@@ -1571,197 +1538,96 @@ export const getUserTransactions = async (userId: string, limit = 50): Promise<T
     .limit(limit)
 
   if (error) {
-    console.error('Error fetching transactions:', error)
+    console.error('Error fetching user transactions:', error)
     return []
   }
 
-  return data || []
+  return data
 }
 
-export const getWalletStats = async (userId: string): Promise<WalletStats> => {
-  try {
-    // Get user profile for current balances
-    const { data: userProfile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('credits, free_credits, purchased_credits, fiat_balance')
-      .eq('id', userId)
-      .single()
+export const transferCreditsToFiatBalance = async (userId: string, amount: number): Promise<boolean> => {
+  // Check if user has enough credits
+  const { data: user } = await supabase
+    .from('user_profiles')
+    .select('credits')
+    .eq('id', userId)
+    .single()
 
-    if (profileError) {
-      console.error('Error fetching user profile for wallet stats:', profileError)
-      throw new Error(profileError.message)
-    }
-
-    // Get all transactions for calculations
-    const { data: transactions, error: transactionsError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (transactionsError) {
-      console.error('Error fetching transactions for wallet stats:', transactionsError)
-      throw new Error(transactionsError.message)
-    }
-
-    // Calculate totals
-    const completedTransactions = transactions?.filter(t => t.status === 'completed') || []
-
-    const totalEarned = completedTransactions
-      .filter(t => ['credit_earning', 'refund', 'credit_transfer_received'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.credits), 0)
-
-    const totalSpent = completedTransactions
-      .filter(t => ['credit_usage', 'credit_purchase', 'credit_transfer_sent'].includes(t.type))
-      .reduce((sum, t) => sum + Math.abs(Number(t.amount || t.credits)), 0)
-
-    const pendingEarnings = transactions?.filter(t => t.status === 'pending' && ['credit_earning'].includes(t.type))
-      .reduce((sum, t) => sum + Number(t.credits), 0) || 0
-
-    return {
-      currentCredits: userProfile?.credits || 0,
-      purchasedCredits: userProfile?.purchased_credits || 0,
-      freeCredits: userProfile?.free_credits || 0,
-      fiatBalance: Number(userProfile?.fiat_balance) || 0,
-      totalEarned,
-      totalSpent,
-      pendingEarnings
-    }
-  } catch (error) {
-    console.error('Error getting wallet stats:', error)
-    // Return default stats in case of error
-    return {
-      currentCredits: 0,
-      purchasedCredits: 0,
-      freeCredits: 0,
-      fiatBalance: 0,
-      totalEarned: 0,
-      totalSpent: 0,
-      pendingEarnings: 0
-    }
+  if (!user || user.credits < amount) {
+    throw new Error('Insufficient credits')
   }
-}
 
-export const transferCreditsToFiatBalance = async (userId: string, credits: number): Promise<boolean> => {
-  try {
-    // Check if user has enough earned credits (not purchased or free)
-    const { data: userProfile } = await supabase
-      .from('user_profiles')
-      .select('credits')
-      .eq('id', userId)
-      .single()
+  // Start a transaction to ensure atomicity
+  const { data, error } = await supabase.rpc('convert_credits_to_fiat', {
+    p_user_id: userId,
+    p_amount: amount
+  })
 
-    if (!userProfile || (userProfile.credits || 0) < credits) {
-      throw new Error('Insufficient earned credits for conversion. Only earned credits can be converted to cash.')
-    }
-
-    // Call the RPC function to handle the conversion
-    const { error } = await supabase.rpc('transfer_credits_to_fiat_balance', {
-      p_user_id: userId,
-      p_credits: credits
-    })
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    return true
-  } catch (error: any) {
-    console.error('Error transferring credits to fiat:', error)
-    throw new Error(error.message || 'Failed to convert credits to cash')
+  if (error) {
+    console.error('Error converting credits to fiat:', error)
+    return false
   }
-}
 
-export const processWithdrawal = async (userId: string, amount: number): Promise<boolean> => {
-  try {
-    // Validate minimum withdrawal amount
-    if (amount < 50) {
-      throw new Error('Minimum withdrawal amount is $50')
-    }
-
-    // Get user profile to check balance and PayPal email
-    const { data: userProfile } = await supabase
-      .from('user_profiles')
-      .select('fiat_balance, paypal_email')
-      .eq('id', userId)
-      .single()
-
-    if (!userProfile) {
-      throw new Error('User profile not found')
-    }
-
-    if (!userProfile.paypal_email) {
-      throw new Error('PayPal email not set. Please add your PayPal email in withdrawal settings.')
-    }
-
-    if (Number(userProfile.fiat_balance || 0) < amount) {
-      throw new Error('Insufficient balance for withdrawal')
-    }
-
-    // Use the database function to process withdrawal with PayPal details
-    const { error } = await supabase.rpc('process_withdrawal_with_paypal', {
-      p_user_id: userId,
-      p_amount: amount,
-      p_paypal_email: userProfile.paypal_email
-    })
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    return true
-  } catch (error: any) {
-    console.error('Error processing withdrawal:', error)
-    throw new Error(error.message || 'Failed to process withdrawal')
-  }
+  return true
 }
 
 export const processWithdrawalWithPaypal = async (userId: string, amount: number, paypalEmail: string): Promise<boolean> => {
-  try {
-    // Validate minimum withdrawal amount
-    if (amount < 50) {
-      throw new Error('Minimum withdrawal amount is $50')
-    }
+  // Check if user has enough fiat balance
+  const { data: user } = await supabase
+    .from('user_profiles')
+    .select('fiat_balance')
+    .eq('id', userId)
+    .single()
 
-    // Validate PayPal email
-    if (!paypalEmail || !paypalEmail.includes('@')) {
-      throw new Error('Valid PayPal email is required')
-    }
+  if (!user || user.fiat_balance < amount) {
+    throw new Error('Insufficient balance')
+  }
 
-    // Get user profile to check balance
-    const { data: userProfile } = await supabase
-      .from('user_profiles')
-      .select('fiat_balance')
-      .eq('id', userId)
-      .single()
-
-    if (!userProfile) {
-      throw new Error('User profile not found')
-    }
-
-    if (Number(userProfile.fiat_balance || 0) < amount) {
-      throw new Error('Insufficient balance for withdrawal')
-    }
-
-    // Use the database function to process withdrawal with PayPal details
-    const { error } = await supabase.rpc('process_withdrawal_with_paypal', {
-      p_user_id: userId,
-      p_amount: amount,
-      p_paypal_email: paypalEmail
+  // Create a withdrawal transaction
+  const { error: transactionError } = await supabase
+    .from('transactions')
+    .insert({
+      user_id: userId,
+      type: 'withdrawal',
+      amount: amount,
+      credits: 0, // No credits involved in withdrawal
+      currency: 'USD',
+      description: `Withdrawal to PayPal (${paypalEmail})`,
+      status: 'pending',
+      payment_method: 'PayPal',
+      withdrawal_method: 'PayPal',
+      withdrawal_details: { email: paypalEmail }
     })
 
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    return true
-  } catch (error: any) {
-    console.error('Error processing withdrawal with PayPal:', error)
-    throw new Error(error.message || 'Failed to process withdrawal')
+  if (transactionError) {
+    console.error('Error creating withdrawal transaction:', transactionError)
+    return false
   }
+
+  // Deduct the amount from user's fiat balance
+  const { error: updateError } = await supabase
+    .from('user_profiles')
+    .update({ fiat_balance: user.fiat_balance - amount })
+    .eq('id', userId)
+
+  if (updateError) {
+    console.error('Error updating user fiat balance:', updateError)
+    return false
+  }
+
+  // Create a notification for the user
+  await supabase
+    .from('notifications')
+    .insert({
+      user_id: userId,
+      title: 'Withdrawal Request Received',
+      message: `Your withdrawal request for $${amount} to PayPal has been received and is being processed.`,
+      type: 'info'
+    })
+
+  return true
 }
 
-// Purchase Functions
 export const hasUserPurchasedContent = async (userId: string, contentId: string, contentType: string): Promise<boolean> => {
   const { data, error } = await supabase
     .from('purchased_content')
@@ -1769,9 +1635,13 @@ export const hasUserPurchasedContent = async (userId: string, contentId: string,
     .eq('user_id', userId)
     .eq('content_id', contentId)
     .eq('content_type', contentType)
-    .maybeSingle()
+    .single()
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
+    // If error is not found, user hasn't purchased
+    if (error.code === 'PGRST116') {
+      return false
+    }
     console.error('Error checking purchase status:', error)
     return false
   }
@@ -1780,39 +1650,55 @@ export const hasUserPurchasedContent = async (userId: string, contentId: string,
 }
 
 export const purchaseContent = async (
-  buyerId: string,
-  sellerId: string,
+  userId: string,
+  creatorId: string,
   contentId: string,
   contentType: string,
   price: number
 ): Promise<boolean> => {
-  // Check if user has enough credits (combined purchased and earned)
-  const { data: userProfile } = await supabase
-    .from('user_profiles')
-    .select('credits, purchased_credits')
-    .eq('id', buyerId)
-    .single()
-
-  const totalCredits = (userProfile?.credits || 0) + (userProfile?.purchased_credits || 0)
-  
-  if (!userProfile || totalCredits < price) {
-    throw new Error(`Insufficient credits to purchase content. You need ${price} credits but only have ${totalCredits} total credits.`)
+  // Check if user has already purchased this content
+  const alreadyPurchased = await hasUserPurchasedContent(userId, contentId, contentType)
+  if (alreadyPurchased) {
+    throw new Error('You have already purchased this content')
   }
 
+  // Check if user has enough credits
+  const { data: user } = await supabase
+    .from('user_profiles')
+    .select('credits, purchased_credits')
+    .eq('id', userId)
+    .single()
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  const totalCredits = user.credits + user.purchased_credits
+  if (totalCredits < price) {
+    throw new Error('Insufficient credits')
+  }
+
+  // Determine which credits to use (purchased first, then earned)
+  let purchasedCreditsToUse = Math.min(user.purchased_credits, price)
+  let earnedCreditsToUse = price - purchasedCreditsToUse
+
+  // Start a transaction to ensure atomicity
   const { data, error } = await supabase.rpc('purchase_content', {
-    p_buyer_user_id: buyerId,
-    p_creator_user_id: sellerId,
+    p_user_id: userId,
+    p_creator_id: creatorId,
     p_content_id: contentId,
     p_content_type: contentType,
-    p_price_in_credits: price
+    p_price: price,
+    p_purchased_credits_to_use: purchasedCreditsToUse,
+    p_earned_credits_to_use: earnedCreditsToUse
   })
 
   if (error) {
     console.error('Error purchasing content:', error)
-    throw new Error(error.message)
+    return false
   }
 
-  return !!data
+  return true
 }
 
 // Promotion Functions
@@ -1823,36 +1709,39 @@ export const getActivePromotionForContent = async (contentId: string, contentTyp
     .eq('content_id', contentId)
     .eq('content_type', contentType)
     .eq('status', 'active')
+    .lte('start_date', new Date().toISOString())
     .gte('end_date', new Date().toISOString())
-    .maybeSingle()
+    .single()
 
-  if (error && error.code !== 'PGRST116') {
-    console.error('Error fetching promotion:', error)
+  if (error) {
+    if (error.code !== 'PGRST116') { // Not found error
+      console.error('Error fetching promotion:', error)
+    }
     return null
   }
 
   return data
 }
 
-export const getUserPromotions = async (userId: string): Promise<Promotion[]> => {
-  const { data, error } = await supabase
+export const incrementPromotionViews = async (promotionId: string): Promise<boolean> => {
+  const { error } = await supabase
     .from('promotions')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .update({ views_gained: supabase.rpc('increment', { row_id: promotionId, column_name: 'views_gained' }) })
+    .eq('id', promotionId)
 
   if (error) {
-    console.error('Error fetching user promotions:', error)
-    return []
+    console.error('Error incrementing promotion views:', error)
+    return false
   }
 
-  return data || []
+  return true
 }
 
 export const incrementPromotionClicks = async (promotionId: string): Promise<boolean> => {
-  const { error } = await supabase.rpc('increment_promotion_clicks', {
-    p_promotion_id: promotionId
-  })
+  const { error } = await supabase
+    .from('promotions')
+    .update({ clicks_gained: supabase.rpc('increment', { row_id: promotionId, column_name: 'clicks_gained' }) })
+    .eq('id', promotionId)
 
   if (error) {
     console.error('Error incrementing promotion clicks:', error)
@@ -1862,151 +1751,67 @@ export const incrementPromotionClicks = async (promotionId: string): Promise<boo
   return true
 }
 
-export const createPromotionAd = async (promotionData: CreatePromotionData): Promise<Promotion | null> => {
-  try {
-    // Check if user has enough credits
-    const { data: userProfile } = await supabase
-      .from('user_profiles')
-      .select('credits, purchased_credits')
-      .eq('id', promotionData.user_id)
-      .single()
-
-    const totalCredits = (userProfile?.credits || 0) + (userProfile?.purchased_credits || 0)
-    
-    if (!userProfile || totalCredits < promotionData.cost_credits) {
-      throw new Error('Insufficient credits to create promotion')
-    }
-
-    // Calculate dates
-    const startDate = new Date()
-    const endDate = new Date()
-    endDate.setDate(endDate.getDate() + promotionData.duration_days)
-
-    // Create promotion and deduct credits
-    // Prioritize using purchased credits first
-    let purchasedCreditsUsed = 0
-    let earnedCreditsUsed = 0
-    
-    if ((userProfile.purchased_credits || 0) >= promotionData.cost_credits) {
-      // Use only purchased credits
-      purchasedCreditsUsed = promotionData.cost_credits
-    } else {
-      // Use all available purchased credits and some earned credits
-      purchasedCreditsUsed = userProfile.purchased_credits || 0
-      earnedCreditsUsed = promotionData.cost_credits - purchasedCreditsUsed
-    }
-
-    // Update user credits
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({ 
-        purchased_credits: (userProfile.purchased_credits || 0) - purchasedCreditsUsed,
-        credits: (userProfile.credits || 0) - earnedCreditsUsed
-      })
-      .eq('id', promotionData.user_id)
-
-    if (updateError) {
-      throw new Error(updateError.message)
-    }
-
-    // Create promotion
-    const { data: promotion, error: promotionError } = await supabase
-      .from('promotions')
-      .insert({
-        user_id: promotionData.user_id,
-        content_id: promotionData.content_id,
-        content_type: promotionData.content_type,
-        promotion_type: promotionData.promotion_type,
-        cost_credits: promotionData.cost_credits,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        status: 'active'
-      })
-      .select()
-      .single()
-
-    if (promotionError) {
-      throw new Error(promotionError.message)
-    }
-
-    // Create transaction record
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: promotionData.user_id,
-        type: 'credit_usage',
-        amount: 0,
-        credits: -promotionData.cost_credits,
-        currency: 'USD',
-        description: `Promotion: ${promotionData.promotion_type} for ${promotionData.duration_days} days`,
-        status: 'completed',
-        metadata: {
-          promotion_id: promotion.id,
-          content_id: promotionData.content_id,
-          content_type: promotionData.content_type,
-          purchased_credits_used: purchasedCreditsUsed,
-          earned_credits_used: earnedCreditsUsed
-        }
-      })
-
-    if (transactionError) {
-      console.error('Error creating transaction record:', transactionError)
-      // Don't throw here as the main operation succeeded
-    }
-
-    return promotion
-  } catch (error: any) {
-    console.error('Error creating promotion:', error)
-    throw new Error(error.message || 'Failed to create promotion')
-  }
-}
-
 // Credit transfer function
-export const transferCredits = async (
-  senderId: string, 
-  recipientIdentifier: string, 
-  amount: number
-): Promise<boolean> => {
-  try {
-    // Validate amount
-    if (amount <= 0) {
-      throw new Error('Transfer amount must be greater than zero')
-    }
-
-    // Check if sender has enough earned credits (only earned credits can be transferred)
-    const { data: senderProfile } = await supabase
-      .from('user_profiles')
-      .select('credits')
-      .eq('id', senderId)
-      .single()
-
-    if (!senderProfile || (senderProfile.credits || 0) < amount) {
-      throw new Error('Insufficient earned credits for transfer. Only earned credits can be transferred.')
-    }
-
-    // Call the RPC function to handle the transfer
-    const { error } = await supabase.rpc('transfer_user_credits', {
-      p_sender_id: senderId,
-      p_recipient_identifier: recipientIdentifier,
-      p_amount: amount
-    })
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    return true
-  } catch (error: any) {
-    console.error('Error transferring credits:', error)
-    throw new Error(error.message || 'Failed to transfer credits')
-  }
-}
-
-// Export the transferUserCredits function that matches the import in Wallet.tsx
 export const transferUserCredits = async (
-  senderId: string, 
-  recipientIdentifier: string, 
+  senderId: string,
+  recipientIdentifier: string, // Can be email or user ID
   amount: number
 ): Promise<boolean> => {
-  return transferCredits(senderId, recipientIdentifier, amount)
+  // Check if sender has enough credits
+  const { data: sender } = await supabase
+    .from('user_profiles')
+    .select('credits')
+    .eq('id', senderId)
+    .single()
+
+  if (!sender || sender.credits < amount) {
+    throw new Error('Insufficient credits')
+  }
+
+  // Find recipient by email or ID
+  let recipientId: string
+  
+  // Check if recipientIdentifier is an email
+  if (recipientIdentifier.includes('@')) {
+    // Look up user by email
+    const { data: userData } = await supabase.auth.admin.getUserByEmail(recipientIdentifier)
+    
+    if (!userData || !userData.user) {
+      throw new Error('Recipient not found')
+    }
+    
+    recipientId = userData.user.id
+  } else {
+    // Assume it's a user ID
+    const { data: recipient } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('id', recipientIdentifier)
+      .single()
+      
+    if (!recipient) {
+      throw new Error('Recipient not found')
+    }
+    
+    recipientId = recipient.id
+  }
+  
+  // Don't allow transfers to self
+  if (senderId === recipientId) {
+    throw new Error('Cannot transfer credits to yourself')
+  }
+
+  // Start a transaction to ensure atomicity
+  const { data, error } = await supabase.rpc('transfer_credits', {
+    p_sender_id: senderId,
+    p_recipient_id: recipientId,
+    p_amount: amount
+  })
+
+  if (error) {
+    console.error('Error transferring credits:', error)
+    return false
+  }
+
+  return true
 }

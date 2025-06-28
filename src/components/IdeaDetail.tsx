@@ -443,8 +443,8 @@ const IdeaDetail = () => {
   }
 
   // Check if content should be locked
-  const isContentLocked = idea && idea.price > 0 && user && idea.user_id !== user.id && !hasPurchased
   const isOwner = idea && user && idea.user_id === user.id
+  const isContentLocked = idea && idea.price > 0 && user && idea.user_id !== user.id && !hasPurchased
 
   if (loading) {
     return (
