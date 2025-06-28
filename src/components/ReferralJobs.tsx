@@ -5,6 +5,7 @@ import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
 import { getReferralJobs, likeReferralJob, createMessage, incrementPromotionClicks, getActivePromotionForContent, type ReferralJob } from '../lib/database'
+import { BASE_URL } from '../lib/config'
 
 // Share modal component
 const ShareModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, isVisible: boolean, onClose: () => void }) => {
@@ -12,7 +13,7 @@ const ShareModal = ({ job, isVisible, onClose }: { job: ReferralJob | null, isVi
 
   if (!job || !isVisible) return null
 
-  const shareUrl = `${window.location.origin}/dashboard/referral-jobs/${job.id}`
+  const shareUrl = `${BASE_URL}/dashboard/referral-jobs/${job.id}`
   const shareText = `Check out this referral opportunity: ${job.title} at ${job.business_name}`
 
   const copyToClipboard = async () => {
@@ -403,9 +404,6 @@ const ReferralJobs = () => {
         break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')

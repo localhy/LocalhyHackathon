@@ -17,6 +17,7 @@ import {
   type Idea, 
   type Comment 
 } from '../lib/database'
+import { BASE_URL } from '../lib/config'
 
 // Share modal component
 const ShareModal = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisible: boolean, onClose: () => void }) => {
@@ -24,7 +25,7 @@ const ShareModal = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisible
 
   if (!idea || !isVisible) return null
 
-  const shareUrl = `${window.location.origin}/dashboard/ideas/${idea.id}`
+  const shareUrl = `${BASE_URL}/dashboard/ideas/${idea.id}`
   const shareText = `Check out this business idea: ${idea.title}`
 
   const copyToClipboard = async () => {

@@ -32,6 +32,7 @@ import {
 } from '../../lib/database'
 import { supabase } from '../../lib/supabase'
 import CommunityRightColumn from './CommunityRightColumn'
+import { BASE_URL } from '../../lib/config'
 
 // Share modal component
 const ShareModal = ({ post, isVisible, onClose }: { post: CommunityPost | null, isVisible: boolean, onClose: () => void }) => {
@@ -39,7 +40,7 @@ const ShareModal = ({ post, isVisible, onClose }: { post: CommunityPost | null, 
 
   if (!post || !isVisible) return null
 
-  const shareUrl = `${window.location.origin}/dashboard/community?post=${post.id}`
+  const shareUrl = `${BASE_URL}/dashboard/community?post=${post.id}`
   const shareText = `Check out this post on Localhy!`
 
   const copyToClipboard = async () => {

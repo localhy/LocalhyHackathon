@@ -5,6 +5,7 @@ import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
 import { getIdeas, likeIdea, bookmarkIdea, hasUserPurchasedContent, incrementPromotionClicks, getActivePromotionForContent, type Idea } from '../lib/database'
+import { BASE_URL } from '../lib/config'
 
 // Mobile long press preview component
 const IdeaPreview = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisible: boolean, onClose: () => void }) => {
@@ -93,7 +94,7 @@ const ShareModal = ({ idea, isVisible, onClose }: { idea: Idea | null, isVisible
 
   if (!idea || !isVisible) return null
 
-  const shareUrl = `${window.location.origin}/dashboard/ideas/${idea.id}`
+  const shareUrl = `${BASE_URL}/dashboard/ideas/${idea.id}`
   const shareText = `Check out this business idea: ${idea.title}`
 
   const copyToClipboard = async () => {
@@ -337,14 +338,8 @@ const IdeasVault = () => {
       case 'create-new':
         navigate('/dashboard/create-new?tab=idea')
         break
-      case 'tool-submission':
-        navigate('/dashboard/tool-submission')
-        break
       case 'my-posts':
         navigate('/dashboard/my-posts')
-        break
-      case 'vault-stats':
-        navigate('/dashboard/vault-stats')
         break
       case 'wallet':
         navigate('/dashboard/wallet')

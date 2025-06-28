@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { UserPlus, Mail, Copy, Check, Send, X } from 'lucide-react'
+import { BASE_URL } from '../../lib/config'
 
 const InviteNeighbors = () => {
   const [emails, setEmails] = useState<string[]>([''])
@@ -8,7 +9,7 @@ const InviteNeighbors = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const inviteLink = `${window.location.origin}/auth?ref=${localStorage.getItem('userId') || ''}`
+  const inviteLink = `${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails]

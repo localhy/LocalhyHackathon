@@ -39,6 +39,7 @@ import {
   type BusinessProfile, 
   type Comment 
 } from '../lib/database'
+import { BASE_URL } from '../lib/config'
 
 // Share modal component
 const ShareModal = ({ business, isVisible, onClose }: { business: BusinessProfile | null, isVisible: boolean, onClose: () => void }) => {
@@ -46,7 +47,7 @@ const ShareModal = ({ business, isVisible, onClose }: { business: BusinessProfil
 
   if (!business || !isVisible) return null
 
-  const shareUrl = `${window.location.origin}/dashboard/business/${business.id}`
+  const shareUrl = `${BASE_URL}/dashboard/business/${business.id}`
   const shareText = `Check out ${business.business_name} on Localhy!`
 
   const copyToClipboard = async () => {

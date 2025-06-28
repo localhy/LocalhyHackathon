@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Building, Search, Filter, MapPin, Star, Phone, Globe, ChevronDown, Plus, User, Heart, MessageCircle, Share2, X, Copy, Mail, Facebook, Twitter, Linkedin } from 'lucide-react'
+import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Building, Users, Clock, Crown, Zap, Target, Star } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { type BusinessProfile } from '../lib/database'
+import { BASE_URL } from '../lib/config'
 
 // Share modal component
 const ShareModal = ({ business, isVisible, onClose }: { business: BusinessProfile | null, isVisible: boolean, onClose: () => void }) => {
@@ -13,7 +14,7 @@ const ShareModal = ({ business, isVisible, onClose }: { business: BusinessProfil
 
   if (!business || !isVisible) return null
 
-  const shareUrl = `${window.location.origin}/dashboard/business/${business.id}`
+  const shareUrl = `${BASE_URL}/dashboard/business/${business.id}`
   const shareText = `Check out ${business.business_name} on Localhy!`
 
   const copyToClipboard = async () => {
