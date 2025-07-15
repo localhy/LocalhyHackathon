@@ -25,7 +25,8 @@ import {
   AlertCircle, 
   CheckCircle, 
   Loader, 
-  User 
+  User,
+  Tag
 } from 'lucide-react'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
