@@ -366,7 +366,7 @@ const BusinessProfilePage = () => {
 
   const handleEdit = () => {
     // Navigate to edit page
-    navigate(`/dashboard/business/edit/${id}`)
+    navigate('/dashboard/business/edit/${id}')
   }
 
   const handleSubmitComment = async () => {
