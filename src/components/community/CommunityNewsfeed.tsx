@@ -27,6 +27,7 @@ import {
   getCommentsByContent, 
   createComment, 
   likeComment,
+  uploadFile,
   type CommunityPost,
   type Comment
 } from '../../lib/database'
@@ -418,14 +419,26 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
     
     setSubmitting(true)
     setError('')
-    
+
+    let imageUrl: string | undefined = undefined;
+    let videoUrl: string | undefined = undefined;
+
     try {
-      // For now, we'll just handle text posts
-      // In a real implementation, you would upload images/videos to storage
+      // Upload image if present
+      if (newPostImage) {
+        imageUrl = await uploadFile(newPostImage, 'community-posts'); // <--- Use your new bucket name here
+      }
+      // Upload video if present
+      if (newPostVideo) {
+        videoUrl = await uploadFile(newPostVideo, 'community-posts'); // <--- Use your new bucket name here
+      }
+    
       const newPost = await createCommunityPost({
         user_id: user.id,
         content: newPostContent.trim(),
         location: newPostLocation.trim() || undefined
+        image_url: imageUrl, // <--- Pass the uploaded image URL
+        video_url: videoUrl, // <--- Pass the uploaded video URL
       })
       
       if (newPost) {
