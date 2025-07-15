@@ -29,6 +29,7 @@ import BusinessPageForm from './components/BusinessPageForm';
 import BusinessProfilePage from './components/BusinessProfilePage';
 import BusinessPagesList from './components/BusinessPagesList';
 import CommunityPage from './components/CommunityPage';
+import EditBusinessProfilePage from './components/EditBusinessProfilePage';
 
 const LandingPage = () => (
   <div className="min-h-screen bg-white">
@@ -235,6 +236,14 @@ function App() {
                 <BusinessProfilePage />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/dashboard/business/edit/:id" // <--- Add this new route
+            element={
+              <ProtectedRoute>
+                <EditBusinessProfilePage />
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/dashboard/business-pages" 
