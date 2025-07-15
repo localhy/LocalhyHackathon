@@ -436,7 +436,7 @@ const CommunityNewsfeed: React.FC<CommunityNewsfeedProps> = ({ user }) => {
       const newPost = await createCommunityPost({
         user_id: user.id,
         content: newPostContent.trim(),
-        location: newPostLocation.trim() || undefined
+        location: newPostLocation.trim() || undefined,
         image_url: imageUrl, // <--- Pass the uploaded image URL
         video_url: videoUrl, // <--- Pass the uploaded video URL
       })
