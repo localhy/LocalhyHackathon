@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Building, Users, Clock, Crown, Zap, Target, Star } from 'lucide-react'
+import { Plus, Eye, Heart, MessageCircle, Share2, Filter, Search, MapPin, Bookmark, BookmarkCheck, DollarSign, Lock, Send, X, ExternalLink, Copy, Mail, Facebook, Twitter, Linkedin, ChevronDown, User, Tag, Building, Users, Clock, Crown, Zap, Target, Star, Edit } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './dashboard/Sidebar'
 import TopBar from './dashboard/TopBar'
