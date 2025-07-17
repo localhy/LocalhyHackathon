@@ -42,58 +42,57 @@ const Messages = () => {
   const [sending, setSending] = useState(false)
 
     useEffect(() => {
-    if (user) {
-      // Initial load of conversations when the component mounts or user/selectedConversation changes.
-      loadConversations();
+  if (user) {
+    // Initial load of conversations when the component mounts or user/selectedConversation changes.
+    loadConversations();
 
-      // Set up a real-time subscription to listen for new messages.
-      // It's important that your Supabase Row Level Security (RLS) policies
-      // on the 'messages' table are correctly configured. This ensures that
-      // your application only receives real-time updates for messages that
-      // the current user is authorized to see (e.g., messages in conversations
-      // they are a participant of).
-      const subscription = supabase
-        .channel('messages_updates') // Using a distinct channel name for clarity
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT', // We only care about new messages being inserted
-            schema: 'public',
-            table: 'messages',
-            // No 'filter' here. We rely on RLS for security and the `loadConversations()`
-            // call below to refresh the UI with the latest data.
-          },
-          (payload) => {
-            const newMessage = payload.new as Message;
+    // Set up a real-time subscription to listen for new messages.
+    // It's important that your Supabase Row Level Security (RLS) policies
+    // on the 'messages' table are correctly configured. This ensures that
+    // your application only receives real-time updates for messages that
+    // the current user is authorized to see (e.g., messages in conversations
+    // they are a participant of).
+    const subscription = supabase
+      .channel('messages_updates') // Using a distinct channel name for clarity
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT', // We only care about new messages being inserted
+          schema: 'public',
+          table: 'messages',
+          // No 'filter' here. We rely on RLS for security and the `loadConversations()`
+          // call below to refresh the UI with the latest data.
+        },
+        (payload) => {
+          const newMessage = payload.new as Message;
+          
+          // If the newly inserted message belongs to the conversation currently open in the UI,
+          // add it to the displayed messages immediately.
+          if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
+            setMessages(prev => [...prev, newMessage]);
             
-            // If the newly inserted message belongs to the conversation currently open in the UI,
-            // add it to the displayed messages immediately.
-            if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
-              setMessages(prev => [...prev, newMessage]);
-              
-              // If the new message is from the other participant, mark it as read.
-              if (newMessage.sender_id !== user.id) {
-                markMessagesAsRead(selectedConversation.id, user.id);
-              }
+            // If the new message is from the other participant, mark it as read.
+            if (newMessage.sender_id !== user.id) {
+              markMessagesAsRead(selectedConversation.id, user.id);
             }
-            
-            // After any new message (whether it's for the active chat or another conversation),
-            // reload the entire list of conversations. This ensures that the conversation list
-            // (including last message content, timestamp, and unread counts) is always fresh.
-            loadConversations();
           }
-        )
-        .subscribe(); // Activate the real-time subscription
+          
+          // After any new message (whether it's for the active chat or another conversation),
+          // reload the entire list of conversations. This ensures that the conversation list
+          // (including last message content, timestamp, and unread counts) is always fresh.
+          loadConversations();
+        }
+      )
+      .subscribe(); // Activate the real-time subscription
 
-      // Clean up the subscription when the component unmounts or its dependencies change.
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
-  }, [user, selectedConversation]); // Dependencies: `user` and `selectedConversation`.
-                                  // `conversations` is intentionally NOT a dependency here to prevent
-                                  // potential infinite re-subscription loops.
-
+    // Clean up the subscription when the component unmounts or its dependencies change.
+    return () => {
+      subscription.unsubscribe();
+    };
+  }
+}, [user, selectedConversation]); // Dependencies: `user` and `selectedConversation`.
+                                // `conversations` is intentionally NOT a dependency here to prevent
+                                // potential infinite re-subscription loops.
 
   const loadConversations = async () => {
   if (!user) return
