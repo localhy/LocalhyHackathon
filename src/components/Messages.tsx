@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase' // Add this line
 import React, { useState, useEffect } from 'react'
 import { MessageCircle, Send, Search, MoreVertical, User, Phone, Video, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
