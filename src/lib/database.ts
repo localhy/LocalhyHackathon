@@ -1438,6 +1438,73 @@ export const deleteNotification = async (notificationId: string): Promise<boolea
 }
 
 // Messages Functions
+export const getConversations = async (userId: string): Promise<Conversation[]> => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(`
+      id,
+      participant_1,
+      participant_2,
+      last_message_at,
+      created_at,
+      messages(content, created_at, sender_id, read), // Fetch messages to get last message content and unread count
+      participant1_profile:user_profiles!conversations_participant_1_fkey(id, name, avatar_url),
+      participant2_profile:user_profiles!conversations_participant_2_fkey(id, name, avatar_url)
+    `)
+    .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
+    .order('last_message_at', { ascending: false }) // Order by last message time
+
+  if (error) {
+    console.error('Error fetching conversations:', error)
+    return []
+  }
+
+  const conversations: Conversation[] = data.map((conv: any) => {
+    const otherUser = conv.participant_1 === userId ? conv.participant2_profile : conv.participant1_profile
+    
+    // Find the latest message for last_message_content
+    const latestMessage = conv.messages
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+
+    // Calculate unread count for the current user
+    const unreadCount = conv.messages.filter((msg: any) => 
+      msg.sender_id !== userId && !msg.read
+    ).length
+
+    return {
+      id: conv.id,
+      participant_1: conv.participant_1,
+      participant_2: conv.participant_2,
+      last_message_at: conv.last_message_at,
+      created_at: conv.created_at,
+      other_user: {
+        id: otherUser.id,
+        name: otherUser.name || 'Unknown User',
+        avatar_url: otherUser.avatar_url
+      },
+      last_message_content: latestMessage ? latestMessage.content : undefined,
+      unread_count: unreadCount
+    }
+  })
+
+  return conversations
+}
+
+export const getMessagesByConversationId = async (conversationId: string): Promise<Message[]> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true }) // Order by creation time for chat history
+
+  if (error) {
+    console.error('Error fetching messages by conversation ID:', error)
+    return []
+  }
+
+  return data || []
+}
+
 export const createMessage = async (messageData: CreateMessageData): Promise<Message | null> => {
   // First, find or create a conversation between the two users
   const { data: existingConversation } = await supabase
@@ -1473,7 +1540,8 @@ export const createMessage = async (messageData: CreateMessageData): Promise<Mes
     .insert({
       conversation_id: conversationId,
       sender_id: messageData.sender_id,
-      content: messageData.content
+      content: messageData.content,
+      read: false // New messages are initially unread by the recipient
     })
     .select()
     .single()
@@ -1490,6 +1558,21 @@ export const createMessage = async (messageData: CreateMessageData): Promise<Mes
     .eq('id', conversationId)
 
   return data
+}
+
+export const markMessagesAsRead = async (conversationId: string, userId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('messages')
+    .update({ read: true })
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', userId) // Only mark messages sent by others as read
+    .eq('read', false) // Only update unread messages
+
+  if (error) {
+    console.error('Error marking messages as read:', error)
+    return false
+  }
+  return true
 }
 
 // Real-time subscriptions
