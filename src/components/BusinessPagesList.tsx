@@ -382,7 +382,7 @@ const BusinessPagesList = () => {
     selectedLocation
   ].filter(Boolean).length
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
         isOpen={sidebarOpen}
@@ -642,7 +642,7 @@ const BusinessPagesList = () => {
                           {/* Referral Reward */}
                           {business.enable_referrals && business.referral_reward_amount && (
                             <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm mb-4 flex items-center">
-                              <DollarSign className="h-4 w-4 mr-1" />
+                               <DollarSign className="h-4 w-4 mr-1" />
                               <span>
                                 Earn {business.referral_reward_type === 'percentage' 
                                   ? `${business.referral_reward_amount}%` 
@@ -692,7 +692,11 @@ const BusinessPagesList = () => {
             {/* All Businesses Tab Content */}
             {activeTab === 'all' && (
               <>
-                {businesses.length === 0 && !loading && !error ? (
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : businesses.length === 0 && !error ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Building className="h-8 w-8 text-blue-500" />
