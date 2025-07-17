@@ -398,8 +398,7 @@ const Messages = () => {
                             style={{ fontFamily: 'Inter' }}
                           >
                             {selectedConversation.other_user.name}
-                          </h3>
-                          <p className="text-sm text-gray-500">Online</p>
+                          </h3>                          
                         </div>
                       </div>
                       
