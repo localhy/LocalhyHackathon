@@ -249,6 +249,21 @@ export interface Message {
   created_at: string
 }
 
+export interface Conversation {
+  id: string
+  participant_1: string
+  participant_2: string
+  last_message_at: string
+  created_at: string
+  other_user: {
+    id: string
+    name: string
+    avatar_url?: string
+  }
+  last_message_content?: string
+  unread_count: number
+}
+
 export interface Transaction {
   id: string
   user_id: string
