@@ -145,6 +145,9 @@ const BusinessPagesList = () => {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedLocation, setSelectedLocation] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchQuery);
+  const [localLocationTerm, setLocalLocationTerm] = useState(selectedLocation);
   
   // Modal states
   const [shareBusiness, setShareBusiness] = useState<BusinessProfile | null>(null)
