@@ -166,6 +166,26 @@ const BusinessPagesList = () => {
     if (node) observerRef.current.observe(node)
   }, [loading, loadingMore, hasMore])
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchQuery(localSearchTerm);
+    }, 500); // 500ms debounce delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearchTerm]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSelectedLocation(localLocationTerm);
+    }, 500); // 500ms debounce delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localLocationTerm]);
+
   // Filter options
   const categories = [
     'Restaurant', 'Retail', 'Professional Services', 'Health & Wellness', 'Technology',
@@ -350,8 +370,10 @@ const BusinessPagesList = () => {
 
   const clearFilters = () => {
     setSearchQuery('')
+    setLocalSearchTerm('');
     setSelectedCategory('')
     setSelectedLocation('')
+    setLocalLocationTerm('');
   }
 
   const activeFiltersCount = [
