@@ -382,50 +382,6 @@ const BusinessPagesList = () => {
     selectedLocation
   ].filter(Boolean).length
 
-  if (loading && businesses.length === 0 && myBusinesses.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar 
-          isOpen={sidebarOpen}
-          currentPage="business-pages"
-          onNavigate={handleNavigation}
-          onClose={() => setSidebarOpen(false)}
-        />
-        <div className="flex-1 flex flex-col">
-          <TopBar 
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-            user={user}
-          />
-          <div className="flex-1 p-4 lg:p-6">
-            <div className="max-w-6xl mx-auto">
-              <div className="animate-pulse space-y-6">
-                <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="bg-white rounded-xl overflow-hidden">
-                      <div className="h-48 bg-gray-200"></div>
-                      <div className="p-6">
-                        <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
