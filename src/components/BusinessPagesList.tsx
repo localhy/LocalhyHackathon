@@ -487,8 +487,8 @@ const BusinessPagesList = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={localSearchTerm}
+                    onChange={(e) => setLocalSearchTerm(e.target.value)}
                     placeholder="Search businesses, categories, or keywords..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     style={{ fontFamily: 'Inter' }}
@@ -534,8 +534,8 @@ const BusinessPagesList = () => {
                       <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <input
                         type="text"
-                        value={selectedLocation}
-                        onChange={(e) => setSelectedLocation(e.target.value)}
+                        value={localLocationTerm}
+                        onChange={(e) => setLocalLocationTerm(e.target.value)}
                         placeholder="Enter any location..."
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
