@@ -40,68 +40,84 @@ const Messages = () => {
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
 
-  useEffect(() => {
-  if (user) {
-    loadConversations() // Call loadConversations on component mount
+    useEffect(() => {
+    if (user) {
+      // Initial load of conversations when the component mounts or user/selectedConversation changes.
+      loadConversations();
 
-    // Set up real-time subscription for messages
-    const subscription = supabase
-      .channel('messages') // Use a generic channel name or a more specific one if you have RLS set up
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=in.(${conversations.map(c => c.id).join(',')})` // Filter for relevant conversations
-        },
-        (payload) => {
-          const newMessage = payload.new as Message
-          
-          // If the new message belongs to the currently selected conversation
-          if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
-            setMessages(prev => [...prev, newMessage])
-            // Mark the message as read if the current user is the recipient and the conversation is open
-            if (newMessage.sender_id !== user.id) {
-              markMessagesAsRead(selectedConversation.id, user.id)
+      // Set up a real-time subscription to listen for new messages.
+      // It's important that your Supabase Row Level Security (RLS) policies
+      // on the 'messages' table are correctly configured. This ensures that
+      // your application only receives real-time updates for messages that
+      // the current user is authorized to see (e.g., messages in conversations
+      // they are a participant of).
+      const subscription = supabase
+        .channel('messages_updates') // Using a distinct channel name for clarity
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT', // We only care about new messages being inserted
+            schema: 'public',
+            table: 'messages',
+            // No 'filter' here. We rely on RLS for security and the `loadConversations()`
+            // call below to refresh the UI with the latest data.
+          },
+          (payload) => {
+            const newMessage = payload.new as Message;
+            
+            // If the newly inserted message belongs to the conversation currently open in the UI,
+            // add it to the displayed messages immediately.
+            if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
+              setMessages(prev => [...prev, newMessage]);
+              
+              // If the new message is from the other participant, mark it as read.
+              if (newMessage.sender_id !== user.id) {
+                markMessagesAsRead(selectedConversation.id, user.id);
+              }
             }
+            
+            // After any new message (whether it's for the active chat or another conversation),
+            // reload the entire list of conversations. This ensures that the conversation list
+            // (including last message content, timestamp, and unread counts) is always fresh.
+            loadConversations();
           }
-          
-          // Update conversation list with new message
-          setConversations(prev => 
-            prev.map(conv => 
-              conv.id === newMessage.conversation_id
-                ? { 
-                    ...conv, 
-                    last_message_content: newMessage.content,
-                    last_message_at: newMessage.created_at,
-                    unread_count: newMessage.sender_id !== user.id ? conv.unread_count + 1 : conv.unread_count
-                  }
-                : conv
-            ).sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
-          )
-        }
-      )
-      .subscribe()
+        )
+        .subscribe(); // Activate the real-time subscription
 
-    return () => {
-      subscription.unsubscribe()
+      // Clean up the subscription when the component unmounts or its dependencies change.
+      return () => {
+        subscription.unsubscribe();
+      };
     }
-  }
-}, [user, selectedConversation, conversations.length]) // Add conversations.length to dependency array
+  }, [user, selectedConversation]); // Dependencies: `user` and `selectedConversation`.
+                                  // `conversations` is intentionally NOT a dependency here to prevent
+                                  // potential infinite re-subscription loops.
+
 
   const loadConversations = async () => {
-    // For now, start with empty conversations since this would require complex database queries
-    // In a real implementation, you would fetch conversations from the database
-    setConversations([])
+  if (!user) return
+
+  try {
+    setLoading(true)
+    const fetchedConversations = await getConversations(user.id)
+    setConversations(fetchedConversations)
+  } catch (err) {
+    console.error('Error loading conversations:', err)
+    // Optionally set an error state here
+  } finally {
     setLoading(false)
   }
+}
 
   const loadMessages = async (conversationId: string) => {
-    // For now, start with empty messages since this would require database queries
-    // In a real implementation, you would fetch messages for the conversation
-    setMessages([])
+  try {
+    const fetchedMessages = await getMessagesByConversationId(conversationId)
+    setMessages(fetchedMessages)
+  } catch (err) {
+    console.error('Error loading messages:', err)
+    // Optionally set an error state here
   }
+}
 
   const handleNavigation = (page: string) => {
     setSidebarOpen(false)
@@ -146,39 +162,46 @@ const Messages = () => {
   }
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !user || sending) return
+  if (!newMessage.trim() || !selectedConversation || !user || sending) return
 
-    setSending(true)
-    try {
-      const messageData = {
-        sender_id: user.id,
-        recipient_id: selectedConversation.other_user.id,
-        content: newMessage.trim()
-      }
-
-      const createdMessage = await createMessage(messageData)
-      if (createdMessage) {
-        setMessages(prev => [...prev, createdMessage])
-        setNewMessage('')
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-    } finally {
-      setSending(false)
+  setSending(true)
+  try {
+    const messageData = {
+      sender_id: user.id,
+      recipient_id: selectedConversation.other_user.id, // Ensure recipient_id is passed
+      content: newMessage.trim()
     }
-  }
 
-  const handleConversationSelect = (conversation: Conversation) => {
-    setSelectedConversation(conversation)
-    loadMessages(conversation.id)
-    
-    // Mark conversation as read
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.id === conversation.id ? { ...conv, unread_count: 0 } : conv
-      )
-    )
+    const createdMessage = await createMessage(messageData)
+    if (createdMessage) {
+      setMessages(prev => [...prev, createdMessage])
+      setNewMessage('')
+      // After sending, refresh conversations to update last message and unread counts
+      loadConversations(); 
+    }
+  } catch (error) {
+    console.error('Error sending message:', error)
+  } finally {
+    setSending(false)
   }
+}
+
+  const handleConversationSelect = async (conversation: Conversation) => {
+  if (!user) return; // Ensure user is available
+
+  setSelectedConversation(conversation);
+  await loadMessages(conversation.id); // Await message loading
+
+  // Mark messages in this conversation as read for the current user
+  await markMessagesAsRead(conversation.id, user.id);
+  
+  // Update the unread count in the local state immediately
+  setConversations(prev => 
+    prev.map(conv => 
+      conv.id === conversation.id ? { ...conv, unread_count: 0 } : conv
+    )
+  );
+}
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
