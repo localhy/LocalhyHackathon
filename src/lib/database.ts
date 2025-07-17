@@ -1447,7 +1447,7 @@ export const getConversations = async (userId: string): Promise<Conversation[]> 
       participant_2,
       last_message_at,
       created_at,
-      messages(content, created_at, sender_id, read), // Fetch messages to get last message content and unread count
+      messages(content, created_at, sender_id, read),
       participant1_profile:user_profiles!conversations_participant_1_fkey(id, name, avatar_url),
       participant2_profile:user_profiles!conversations_participant_2_fkey(id, name, avatar_url)
     `)
