@@ -7,7 +7,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { 
   subscribeToUserMessages,
   createMessage,
-  type Message 
+  getConversations, // Add this
+  getMessagesByConversationId, // Add this
+  markMessagesAsRead, // Add this
+  type Message, // Keep this
+  type Conversation // Add this
 } from '../lib/database'
 
 interface Conversation {
@@ -37,19 +41,30 @@ const Messages = () => {
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      loadConversations()
-      
-      // Set up real-time subscription for messages
-      const subscription = subscribeToUserMessages(user.id, (payload) => {
-        console.log('Message update:', payload)
-        
-        if (payload.eventType === 'INSERT') {
+  if (user) {
+    loadConversations() // Call loadConversations on component mount
+
+    // Set up real-time subscription for messages
+    const subscription = supabase
+      .channel('messages') // Use a generic channel name or a more specific one if you have RLS set up
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=in.(${conversations.map(c => c.id).join(',')})` // Filter for relevant conversations
+        },
+        (payload) => {
           const newMessage = payload.new as Message
           
-          // Add message to current conversation if it's selected
+          // If the new message belongs to the currently selected conversation
           if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
             setMessages(prev => [...prev, newMessage])
+            // Mark the message as read if the current user is the recipient and the conversation is open
+            if (newMessage.sender_id !== user.id) {
+              markMessagesAsRead(selectedConversation.id, user.id)
+            }
           }
           
           // Update conversation list with new message
@@ -58,7 +73,7 @@ const Messages = () => {
               conv.id === newMessage.conversation_id
                 ? { 
                     ...conv, 
-                    last_message: newMessage,
+                    last_message_content: newMessage.content,
                     last_message_at: newMessage.created_at,
                     unread_count: newMessage.sender_id !== user.id ? conv.unread_count + 1 : conv.unread_count
                   }
@@ -66,13 +81,14 @@ const Messages = () => {
             ).sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
           )
         }
-      })
+      )
+      .subscribe()
 
-      return () => {
-        subscription.unsubscribe()
-      }
+    return () => {
+      subscription.unsubscribe()
     }
-  }, [user, selectedConversation])
+  }
+}, [user, selectedConversation, conversations.length]) // Add conversations.length to dependency array
 
   const loadConversations = async () => {
     // For now, start with empty conversations since this would require complex database queries
