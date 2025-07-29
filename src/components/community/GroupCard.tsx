@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { forwardRef } from 'react'; // Import forwardRef
 import { Users, MapPin, Lock, Globe, ArrowRight, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Group } from '../../lib/database'; // Assuming Group interface is exported from database.ts
+import { Group } from '../../lib/database';
 
 interface GroupCardProps {
   group: Group;
@@ -11,7 +11,8 @@ interface GroupCardProps {
   currentUserId: string; // Pass current user ID to check ownership
 }
 
-const GroupCard: React.FC<GroupCardProps> = ({ group, isMember, onJoin, onLeave, currentUserId }) => {
+// Use forwardRef to allow parent components to pass a ref to this component's DOM node
+const GroupCard = forwardRef<HTMLDivElement, GroupCardProps>(({ group, isMember, onJoin, onLeave, currentUserId }, ref) => {
   const navigate = useNavigate();
 
   const handleViewDetails = () => {
@@ -43,13 +44,14 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isMember, onJoin, onLeave,
     switch (privacy) {
       case 'public': return <Globe className="h-3 w-3 mr-1" />;
       case 'private': return <Lock className="h-3 w-3 mr-1" />;
-      case 'hidden': return <Lock className="h-3 w-3 mr-1" />; // Hidden groups might not be discoverable anyway
+      case 'hidden': return <Lock className="h-3 w-3 mr-1" />;
       default: return null;
     }
   };
 
   return (
     <div
+      ref={ref} // Attach the forwarded ref to the outermost div
       className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
       onClick={handleViewDetails}
     >
@@ -111,6 +113,6 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isMember, onJoin, onLeave,
       </div>
     </div>
   );
-};
+});
 
 export default GroupCard;
