@@ -451,6 +451,76 @@ export interface CreateCommunityPostData {
   location?: string
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  description: string;
+  type: 'business_guild' | 'idea_hub' | 'referral_network' | 'general';
+  location?: string;
+  owner_id: string;
+  privacy_setting: 'public' | 'private' | 'hidden';
+  created_at: string;
+  updated_at: string;
+  // Optional: Join with user_profiles for owner details
+  owner_profile?: {
+    name: string;
+    avatar_url?: string;
+  };
+}
+
+export interface GroupMember {
+  group_id: string;
+  user_id: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+  // Optional: Join with user_profiles for member details
+  user_profile?: {
+    name: string;
+    avatar_url?: string;
+  };
+}
+
+export interface GroupPost {
+  id: string;
+  group_id: string;
+  user_id: string;
+  content: string;
+  image_url?: string;
+  video_url?: string;
+  likes: number;
+  comments_count: number;
+  created_at: string;
+  updated_at: string;
+  // Optional: Join with user_profiles for post author details
+  user_profile?: {
+    name: string;
+    avatar_url?: string;
+  };
+  liked_by_user?: boolean; // For client-side tracking if current user liked it
+}
+
+export interface GroupPostLike {
+  id: string;
+  post_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface GroupComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  likes: number;
+  created_at: string;
+  // Optional: Join with user_profiles for comment author details
+  user_profile?: {
+    name: string;
+    avatar_url?: string;
+  };
+  liked_by_user?: boolean; // For client-side tracking if current user liked it
+}
+
 // Constants
 export const REFERRAL_JOB_POSTING_COST = 10 // Credits required to post a referral job
 
@@ -2107,4 +2177,328 @@ export const transferUserCredits = async (
   amount: number
 ): Promise<boolean> => {
   return transferCredits(senderId, recipientIdentifier, amount)
+}
+
+// --- Group Management Functions ---
+
+export async function createGroup(groupData: {
+  name: string;
+  description: string;
+  type: 'business_guild' | 'idea_hub' | 'referral_network' | 'general';
+  location?: string;
+  owner_id: string;
+  privacy_setting: 'public' | 'private' | 'hidden';
+}): Promise<Group | null> {
+  const { data, error } = await supabase
+    .from('groups')
+    .insert(groupData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating group:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function getGroupById(groupId: string): Promise<Group | null> {
+  const { data, error } = await supabase
+    .from('groups')
+    .select(`
+      *,
+      owner_profile:user_profiles(name, avatar_url)
+    `)
+    .eq('id', groupId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+    console.error('Error fetching group by ID:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function getGroups(
+  filters: {
+    type?: 'business_guild' | 'idea_hub' | 'referral_network' | 'general';
+    location?: string;
+    userId?: string; // To get groups a user is a member of
+    searchTerm?: string;
+    privacy?: 'public' | 'private' | 'hidden';
+  },
+  pagination: { limit: number; offset: number } = { limit: 10, offset: 0 }
+): Promise<Group[]> {
+  let query = supabase
+    .from('groups')
+    .select(`
+      *,
+      owner_profile:user_profiles(name, avatar_url)
+    `);
+
+  if (filters.type) {
+    query = query.eq('type', filters.type);
+  }
+  if (filters.location) {
+    query = query.ilike('location', `%${filters.location}%`);
+  }
+  if (filters.privacy) {
+    query = query.eq('privacy_setting', filters.privacy);
+  } else {
+    // By default, only show public groups unless explicitly filtered
+    query = query.eq('privacy_setting', 'public');
+  }
+
+  if (filters.userId) {
+    // Join with group_members to filter by user membership
+    query = query.in('id', supabase.from('group_members').select('group_id').eq('user_id', filters.userId));
+  }
+
+  if (filters.searchTerm) {
+    query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
+  }
+
+  query = query
+    .order('created_at', { ascending: false })
+    .range(pagination.offset, pagination.offset + pagination.limit - 1);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching groups:', error);
+    throw error;
+  }
+  return data || [];
+}
+
+export async function joinGroup(groupId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('group_members')
+    .insert({ group_id: groupId, user_id: userId, role: 'member' });
+
+  if (error) {
+    console.error('Error joining group:', error);
+    throw error;
+  }
+  return true;
+}
+
+export async function leaveGroup(groupId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error leaving group:', error);
+    throw error;
+  }
+  return true;
+}
+
+export async function getGroupMembers(groupId: string): Promise<GroupMember[]> {
+  const { data, error } = await supabase
+    .from('group_members')
+    .select(`
+      *,
+      user_profile:user_profiles(name, avatar_url)
+    `)
+    .eq('group_id', groupId);
+
+  if (error) {
+    console.error('Error fetching group members:', error);
+    throw error;
+  }
+  return data || [];
+}
+
+// --- Group Post Management Functions ---
+
+export async function createGroupPost(postData: {
+  group_id: string;
+  user_id: string;
+  content: string;
+  image_url?: string;
+  video_url?: string;
+}): Promise<GroupPost | null> {
+  const { data, error } = await supabase
+    .from('group_posts')
+    .insert(postData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating group post:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function getGroupPosts(
+  groupId: string,
+  currentUserId?: string, // Optional: to check if current user liked posts
+  pagination: { limit: number; offset: number } = { limit: 10, offset: 0 }
+): Promise<GroupPost[]> {
+  let query = supabase
+    .from('group_posts')
+    .select(`
+      *,
+      user_profile:user_profiles(name, avatar_url)
+    `)
+    .eq('group_id', groupId)
+    .order('created_at', { ascending: false })
+    .range(pagination.offset, pagination.offset + pagination.limit - 1);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching group posts:', error);
+    throw error;
+  }
+
+  // Check if current user liked each post
+  if (currentUserId && data) {
+    const postIds = data.map(post => post.id);
+    const { data: likedPosts, error: likedError } = await supabase
+      .from('group_post_likes')
+      .select('post_id')
+      .in('post_id', postIds)
+      .eq('user_id', currentUserId);
+
+    if (likedError) {
+      console.error('Error fetching liked group posts:', likedError);
+    } else if (likedPosts) {
+      const likedPostIds = new Set(likedPosts.map(like => like.post_id));
+      return data.map(post => ({
+        ...post,
+        liked_by_user: likedPostIds.has(post.id)
+      }));
+    }
+  }
+
+  return data || [];
+}
+
+export async function likeGroupPost(postId: string, userId: string): Promise<boolean> {
+  // Check if the user has already liked the post
+  const { data: existingLike, error: checkError } = await supabase
+    .from('group_post_likes')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found
+    console.error('Error checking existing like:', checkError);
+    throw checkError;
+  }
+
+  let success = false;
+  if (existingLike) {
+    // If liked, unlike it (delete the like entry)
+    const { error: deleteError } = await supabase
+      .from('group_post_likes')
+      .delete()
+      .eq('id', existingLike.id);
+
+    if (deleteError) {
+      console.error('Error unliking group post:', deleteError);
+      throw deleteError;
+    }
+    // Decrement likes count on the post
+    const { error: updateError } = await supabase.rpc('decrement_group_post_likes', { post_id: postId });
+    if (updateError) {
+      console.error('Error decrementing group post likes:', updateError);
+      throw updateError;
+    }
+    success = true;
+  } else {
+    // If not liked, like it (insert a new like entry)
+    const { error: insertError } = await supabase
+      .from('group_post_likes')
+      .insert({ post_id: postId, user_id: userId });
+
+    if (insertError) {
+      console.error('Error liking group post:', insertError);
+      throw insertError;
+    }
+    // Increment likes count on the post
+    const { error: updateError } = await supabase.rpc('increment_group_post_likes', { post_id: postId });
+    if (updateError) {
+      console.error('Error incrementing group post likes:', updateError);
+      throw updateError;
+    }
+    success = true;
+  }
+  return success;
+}
+
+// --- Group Comment Management Functions ---
+
+export async function createGroupComment(commentData: {
+  post_id: string;
+  user_id: string;
+  content: string;
+}): Promise<GroupComment | null> {
+  const { data, error } = await supabase
+    .from('group_comments')
+    .insert(commentData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating group comment:', error);
+    throw error;
+  }
+  // Increment comments_count on the group_posts table
+  const { error: updateError } = await supabase.rpc('increment_group_post_comments_count', { post_id: commentData.post_id });
+  if (updateError) {
+    console.error('Error incrementing group post comments count:', updateError);
+    // Don't throw, as the comment itself was created
+  }
+  return data;
+}
+
+export async function getGroupComments(
+  postId: string,
+  currentUserId?: string // Optional: to check if current user liked comments
+): Promise<GroupComment[]> {
+  let query = supabase
+    .from('group_comments')
+    .select(`
+      *,
+      user_profile:user_profiles(name, avatar_url)
+    `)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching group comments:', error);
+    throw error;
+  }
+
+  // Check if current user liked each comment
+  if (currentUserId && data) {
+    const commentIds = data.map(comment => comment.id);
+    const { data: likedComments, error: likedError } = await supabase
+      .from('comment_likes') // Assuming comment_likes table is generic for all comments
+      .select('comment_id')
+      .in('comment_id', commentIds)
+      .eq('user_id', currentUserId);
+
+    if (likedError) {
+      console.error('Error fetching liked group comments:', likedError);
+    } else if (likedComments) {
+      const likedCommentIds = new Set(likedComments.map(like => like.comment_id));
+      return data.map(comment => ({
+        ...comment,
+        liked_by_user: likedCommentIds.has(comment.id)
+      }));
+    }
+  }
+
+  return data || [];
 }
