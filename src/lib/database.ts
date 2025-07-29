@@ -2229,6 +2229,28 @@ export async function getGroups(
   },
   pagination: { limit: number; offset: number } = { limit: 10, offset: 0 }
 ): Promise<Group[]> {
+  let groupIds: string[] | null = null;
+
+  // If userId filter is provided, first fetch the group IDs that the user is a member of
+  if (filters.userId) {
+    const { data: memberGroups, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', filters.userId);
+
+    if (memberError) {
+      console.error('Error fetching member groups for user:', memberError);
+      throw memberError; // Propagate the error
+    }
+    // Extract group_id into a simple array of strings
+    groupIds = memberGroups ? memberGroups.map(gm => gm.group_id) : [];
+
+    // If the user is not a member of any groups, we can return an empty array early
+    if (groupIds.length === 0) {
+      return [];
+    }
+  }
+
   let query = supabase
     .from('groups')
     .select(`
@@ -2242,16 +2264,18 @@ export async function getGroups(
   if (filters.location) {
     query = query.ilike('location', `%${filters.location}%`);
   }
+
+  // Apply privacy filter. If userId is present, RLS should handle private groups,
+  // so we don't force 'public' here. Otherwise, default to public.
   if (filters.privacy) {
     query = query.eq('privacy_setting', filters.privacy);
-  } else {
-    // By default, only show public groups unless explicitly filtered
+  } else if (!filters.userId) {
     query = query.eq('privacy_setting', 'public');
   }
 
-  if (filters.userId) {
-    // Join with group_members to filter by user membership
-    query = query.in('id', supabase.from('group_members').select('group_id').eq('user_id', filters.userId));
+  // Apply the groupIds filter if it was populated (meaning filters.userId was provided)
+  if (groupIds !== null) {
+    query = query.in('id', groupIds);
   }
 
   if (filters.searchTerm) {
