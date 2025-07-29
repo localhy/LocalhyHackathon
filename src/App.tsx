@@ -30,6 +30,9 @@ import BusinessProfilePage from './components/BusinessProfilePage';
 import BusinessPagesList from './components/BusinessPagesList';
 import CommunityPage from './components/CommunityPage';
 import EditBusinessProfilePage from './components/EditBusinessProfilePage';
+import CommunityGroups from './components/community/CommunityGroups'; // Ensure this is imported
+import CreateGroupForm from './components/community/CreateGroupForm';
+import GroupDetail from './components/community/GroupDetail';
 
 const LandingPage = () => (
   <div className="min-h-screen bg-white">
@@ -261,6 +264,22 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route // New route for creating a group
+          path="/dashboard/community/groups/create"
+          element={
+            <ProtectedRoute>
+              <CreateGroupForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route // New route for viewing group details
+          path="/dashboard/community/groups/:id"
+          element={
+            <ProtectedRoute>
+              <GroupDetail />
+            </ProtectedRoute>
+          }
+        />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
