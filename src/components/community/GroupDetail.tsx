@@ -537,6 +537,16 @@ const GroupDetail = () => {
             onClick={() => setSidebarOpen(false)}
           />
         )}
+
+        {/* Comments Modal */}
+        {showCommentsModal && selectedPostForComments && (
+          <CommentsModal
+            post={selectedPostForComments}
+            isVisible={showCommentsModal}
+            onClose={() => setShowCommentsModal(false)}
+            currentUserId={user?.id}
+          />
+        )}
       </div>
     );
   };
