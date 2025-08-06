@@ -22,6 +22,16 @@ const GroupDetail = () => {
   const [posts, setPosts] = useState<GroupPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Add this function to handle sidebar navigation
+  const handleNavigation = (page: string) => {
+  setSidebarOpen(false);
+  // You might want to add specific navigation logic here if needed,
+  // but for now, just closing the sidebar is sufficient.
+  // For example, if you want to navigate back to the main community page:
+  navigate('/dashboard/community');
+};
 
   // Post creation states
   const [newPostContent, setNewPostContent] = useState('');
@@ -217,6 +227,21 @@ const GroupDetail = () => {
       </div>
     );
   }
+
+  return (
+  <div className="min-h-screen bg-gray-50 flex">
+    <Sidebar
+      isOpen={sidebarOpen}
+      currentPage="community" // Set the current page for sidebar highlighting
+      onNavigate={handleNavigation}
+      onClose={() => setSidebarOpen(false)}
+    />
+
+    <div className="flex-1 flex flex-col">
+      <TopBar
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        user={user} // Pass the user prop to TopBar
+      />
 
   return (
     <div className="bg-gray-50 min-h-screen">
