@@ -540,12 +540,16 @@ const GroupDetail = () => {
 
         {/* Comments Modal */}
         {showCommentsModal && selectedPostForComments && (
-          <CommentsModal
+          {/* You will need to import CommentsModal from a separate file */}
+          {/* <CommentsModal
             post={selectedPostForComments}
             isVisible={showCommentsModal}
             onClose={() => setShowCommentsModal(false)}
             currentUserId={user?.id}
-          />
+          /> */}
+          <div className="text-red-500 text-center p-4">
+            CommentsModal component needs to be imported from a separate file.
+          </div>
         )}
       </div>
     );
