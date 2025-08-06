@@ -529,7 +529,24 @@ const GroupDetail = () => {
             </div>
           </div>
         </div>
-    );
-  };
+      </div>
 
-  export default GroupDetail;
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Comments Modal - Placeholder for external component */}
+      {showCommentsModal && selectedPostForComments && (
+        <div className="text-red-500 text-center p-4">
+          CommentsModal component needs to be imported from a separate file.
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default GroupDetail;
