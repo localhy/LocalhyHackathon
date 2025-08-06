@@ -12,6 +12,7 @@ import {
   createGroupComment, getGroupComments, joinGroup, leaveGroup, uploadFile,
   Group, GroupPost, GroupComment
 } from '../../lib/database'; // Import all necessary types and functions
+import CommentsModal from './CommentsModal'; // Import the CommentsModal component
 
 const GroupDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -539,11 +540,14 @@ const GroupDetail = () => {
         />
       )}
 
-      {/* Comments Modal - Placeholder for external component */}
+      {/* Comments Modal */}
       {showCommentsModal && selectedPostForComments && (
-        <div className="text-red-500 text-center p-4">
-          CommentsModal component needs to be imported from a separate file.
-        </div>
+        <CommentsModal
+          post={selectedPostForComments}
+          isVisible={showCommentsModal}
+          onClose={() => setShowCommentsModal(false)}
+          currentUserId={user?.id}
+        />
       )}
     </div>
   );
