@@ -11,6 +11,12 @@
     - Both columns are optional (nullable) to maintain compatibility with existing groups
 */
 
+-- up.sql
 ALTER TABLE public.groups
 ADD COLUMN thumbnail_url TEXT,
 ADD COLUMN cover_photo_url TEXT;
+
+-- down.sql
+ALTER TABLE public.groups
+DROP COLUMN thumbnail_url,
+DROP COLUMN cover_photo_url;
