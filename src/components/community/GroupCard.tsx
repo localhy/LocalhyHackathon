@@ -9,10 +9,11 @@ interface GroupCardProps {
   onJoin: (groupId: string) => void;
   onLeave: (groupId: string) => void;
   currentUserId: string; // Pass current user ID to check ownership
+  memberCount: number; // Add memberCount prop
 }
 
 // Use forwardRef to allow parent components to pass a ref to this component's DOM node
-const GroupCard = forwardRef<HTMLDivElement, GroupCardProps>(({ group, isMember, onJoin, onLeave, currentUserId }, ref) => {
+const GroupCard = forwardRef<HTMLDivElement, GroupCardProps>(({ group, isMember, onJoin, onLeave, currentUserId, memberCount }, ref) => {
   const navigate = useNavigate();
 
   const handleViewDetails = () => {
@@ -55,6 +56,21 @@ const GroupCard = forwardRef<HTMLDivElement, GroupCardProps>(({ group, isMember,
       className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
       onClick={handleViewDetails}
     >
+      {/* Thumbnail Image */}
+      <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+        {group.thumbnail_url ? (
+          <img
+            src={group.thumbnail_url}
+            alt={group.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Users className="h-12 w-12 text-gray-400" />
+          </div>
+        )}
+      </div>
+
       <div className="p-5">
         <div className="flex items-center justify-between mb-3">
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${getGroupTypeColor(group.type)}`}>
@@ -76,7 +92,7 @@ const GroupCard = forwardRef<HTMLDivElement, GroupCardProps>(({ group, isMember,
         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
           <div className="flex items-center space-x-2">
             <Users className="h-4 w-4" />
-            <span>{/* Placeholder for member count, will fetch in parent */}0 Members</span>
+            <span>{memberCount} Members</span>
           </div>
           {group.location && (
             <div className="flex items-center space-x-1">
