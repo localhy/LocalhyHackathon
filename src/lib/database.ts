@@ -1,3 +1,4 @@
+```typescript
 import { supabase } from './supabase'
 
 // Types
@@ -23,6 +24,7 @@ export interface UserProfile {
   twitter?: string
   facebook?: string
   instagram?: string
+  referred_by?: string // New field for referral tracking
 }
 
 export interface BusinessProfile {
@@ -461,11 +463,15 @@ export interface Group {
   privacy_setting: 'public' | 'private' | 'hidden';
   created_at: string;
   updated_at: string;
+  thumbnail_url?: string; // New field
+  cover_photo_url?: string; // New field
+  member_count?: number; // New field
   // Optional: Join with user_profiles for owner details
   owner_profile?: {
     name: string;
     avatar_url?: string;
   };
+  isMember?: boolean; // Client-side flag
 }
 
 export interface GroupMember {
@@ -519,6 +525,35 @@ export interface GroupComment {
     avatar_url?: string;
   };
   liked_by_user?: boolean; // For client-side tracking if current user liked it
+}
+
+export interface Event {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  location?: string;
+  image_url?: string;
+  created_at: string;
+  updated_at: string;
+  user_profile?: { name: string; avatar_url?: string };
+}
+
+export interface MarketplaceItem {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  price: number;
+  category?: string;
+  condition?: 'new' | 'used' | 'like new';
+  image_url?: string;
+  location?: string;
+  status?: 'available' | 'sold' | 'pending';
+  created_at: string;
+  updated_at: string;
+  user_profile?: { name: string; avatar_url?: string };
 }
 
 // Constants
@@ -1305,7 +1340,7 @@ export const likeCommunityPost = async (postId: string, userId: string): Promise
 }
 
 // Comments Functions
-export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post', userId?: string): Promise<Comment[]> => {
+export const getCommentsByContent = async (contentId: string, contentType: 'idea' | 'referral_job' | 'tool' | 'business' | 'community_post' | 'group_post', userId?: string): Promise<Comment[]> => {
   const { data, error } = await supabase
     .from('comments')
     .select(`
@@ -2188,6 +2223,8 @@ export async function createGroup(groupData: {
   location?: string;
   owner_id: string;
   privacy_setting: 'public' | 'private' | 'hidden';
+  thumbnail_url?: string;
+  cover_photo_url?: string;
 }): Promise<Group | null> {
   const { data, error } = await supabase
     .from('groups')
@@ -2199,6 +2236,12 @@ export async function createGroup(groupData: {
     console.error('Error creating group:', error);
     throw error;
   }
+
+  // Automatically add the owner as an admin member
+  if (data) {
+    await joinGroup(data.id, groupData.owner_id, 'admin'); // Call joinGroup with admin role
+  }
+
   return data;
 }
 
@@ -2207,7 +2250,8 @@ export async function getGroupById(groupId: string): Promise<Group | null> {
     .from('groups')
     .select(`
       *,
-      owner_profile:user_profiles(name, avatar_url)
+      owner_profile:user_profiles(name, avatar_url),
+      member_count
     `)
     .eq('id', groupId)
     .single();
@@ -2255,7 +2299,8 @@ export async function getGroups(
     .from('groups')
     .select(`
       *,
-      owner_profile:user_profiles(name, avatar_url)
+      owner_profile:user_profiles(name, avatar_url),
+      member_count
     `);
 
   if (filters.type) {
@@ -2292,13 +2337,51 @@ export async function getGroups(
     console.error('Error fetching groups:', error);
     throw error;
   }
+
+  // Add isMember flag for client-side use
+  if (filters.userId && data) {
+    const userMemberGroups = new Set(groupIds); // Use the already fetched groupIds for efficiency
+    return data.map(group => ({
+      ...group,
+      isMember: userMemberGroups.has(group.id)
+    }));
+  }
+
   return data || [];
 }
 
-export async function joinGroup(groupId: string, userId: string): Promise<boolean> {
+export async function updateGroup(groupId: string, updates: Partial<Group>): Promise<Group | null> {
+  const { data, error } = await supabase
+    .from('groups')
+    .update(updates)
+    .eq('id', groupId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating group:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteGroup(groupId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('groups')
+    .delete()
+    .eq('id', groupId);
+
+  if (error) {
+    console.error('Error deleting group:', error);
+    throw error;
+  }
+  return true;
+}
+
+export async function joinGroup(groupId: string, userId: string, role: 'admin' | 'member' = 'member'): Promise<boolean> {
   const { error } = await supabase
     .from('group_members')
-    .insert({ group_id: groupId, user_id: userId, role: 'member' });
+    .insert([{ group_id: groupId, user_id: userId, role: role }]);
 
   if (error) {
     console.error('Error joining group:', error);
@@ -2526,3 +2609,4 @@ export async function getGroupComments(
 
   return data || [];
 }
+```
