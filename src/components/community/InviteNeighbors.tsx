@@ -9,6 +9,7 @@ const InviteNeighbors = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
+  // The inviteLink now correctly includes the current user's ID as a referrer
   const inviteLink = `${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
 
   const handleEmailChange = (index: number, value: string) => {
@@ -39,7 +40,7 @@ const InviteNeighbors = () => {
     }
   }
 
-  const sendInvites = async () => { // Made async
+  const sendInvites = async () => {
     // Filter out empty emails
     const validEmails = emails.filter(email => email.trim() !== '')
     
@@ -61,20 +62,13 @@ const InviteNeighbors = () => {
     setError('')
     
     try {
-      // --- CONCEPTUAL: Call your Supabase Edge Function here ---
-      // This is a placeholder. You would replace this with an actual fetch call
-      // to your deployed Supabase Edge Function (e.g., /functions/v1/send-invites).
-      // The Edge Function would then use an email sending service (like Resend, SendGrid)
-      // to send the actual emails.
-      
-      // Example of what the fetch call might look like:
-      /*
-      const response = await fetch('/api/send-invites', { // Adjust this URL to your Edge Function endpoint
+      // Call your deployed Supabase Edge Function
+      const response = await fetch('https://YOUR_SUPABASE_PROJECT_REF.supabase.co/functions/v1/send-invites', { // REPLACE THIS URL
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Include Authorization header if your Edge Function requires it
-          // 'Authorization': `Bearer ${YOUR_SUPABASE_ANON_KEY_OR_SERVICE_ROLE_KEY}`
+          // If your function requires an Authorization header (e.g., for RLS), add it here.
+          // For this public function, it's usually not needed unless you add RLS to the function itself.
         },
         body: JSON.stringify({ emails: validEmails, inviteLink }),
       });
@@ -83,14 +77,9 @@ const InviteNeighbors = () => {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to send invitations via server.');
       }
-      */
-
-      // --- SIMULATION (for local testing without a backend function) ---
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      // --- END SIMULATION ---
-
+      
       setSuccess(true)
-      setEmails([''])
+      setEmails(['']) // Clear emails after successful send
       
       // Reset success message after 3 seconds
       setTimeout(() => {
