@@ -23,6 +23,7 @@ export interface UserProfile {
   twitter?: string
   facebook?: string
   instagram?: string
+  referred_by?: string; // Added for referral tracking
 }
 
 export interface BusinessProfile {
@@ -333,6 +334,36 @@ export interface CommunityPost {
   liked_by_user: boolean
 }
 
+// New interfaces for Events and Marketplace
+export interface Event {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  location?: string;
+  image_url?: string;
+  created_at: string;
+  updated_at: string;
+  user_profile?: { name: string; avatar_url?: string };
+}
+
+export interface MarketplaceItem {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  price: number;
+  category?: string;
+  condition?: 'new' | 'used' | 'like new';
+  image_url?: string;
+  location?: string;
+  status?: 'available' | 'sold' | 'pending';
+  created_at: string;
+  updated_at: string;
+  user_profile?: { name: string; avatar_url?: string };
+}
+
 // Create types for form data
 export interface CreateIdeaData {
   user_id: string
@@ -461,6 +492,9 @@ export interface Group {
   privacy_setting: 'public' | 'private' | 'hidden';
   created_at: string;
   updated_at: string;
+  thumbnail_url?: string; // New field
+  cover_photo_url?: string; // New field
+  member_count?: number; // Added for group card display
   // Optional: Join with user_profiles for owner details
   owner_profile?: {
     name: string;
@@ -2188,10 +2222,12 @@ export async function createGroup(groupData: {
   location?: string;
   owner_id: string;
   privacy_setting: 'public' | 'private' | 'hidden';
+  thumbnail_url?: string; // Added
+  cover_photo_url?: string; // Added
 }): Promise<Group | null> {
   const { data, error } = await supabase
     .from('groups')
-    .insert(groupData)
+    .insert([groupData])
     .select()
     .single();
 
@@ -2199,6 +2235,12 @@ export async function createGroup(groupData: {
     console.error('Error creating group:', error);
     throw error;
   }
+
+  // Automatically add the owner as an admin member
+  if (data) {
+    await joinGroup(data.id, groupData.owner_id, 'admin'); // Call joinGroup with admin role
+  }
+
   return data;
 }
 
@@ -2255,8 +2297,9 @@ export async function getGroups(
     .from('groups')
     .select(`
       *,
-      owner_profile:user_profiles(name, avatar_url)
-    `);
+      owner_profile:user_profiles(name, avatar_url),
+      member_count:group_members(count)
+    `); // Added member_count subquery
 
   if (filters.type) {
     query = query.eq('type', filters.type);
@@ -2292,13 +2335,49 @@ export async function getGroups(
     console.error('Error fetching groups:', error);
     throw error;
   }
-  return data || [];
+  // Flatten the member_count array if it's returned as an array of objects
+  return data ? data.map((group: any) => ({
+    ...group,
+    member_count: group.member_count?.[0]?.count || 0
+  })) : [];
 }
 
-export async function joinGroup(groupId: string, userId: string): Promise<boolean> {
+export async function updateGroup(groupId: string, updates: Partial<Group>): Promise<Group | null> {
+  const { data, error } = await supabase
+    .from('groups')
+    .update(updates)
+    .eq('id', groupId)
+    .select(`
+      *,
+      owner_profile:user_profiles(name, avatar_url)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error updating group:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteGroup(groupId: string): Promise<boolean> {
   const { error } = await supabase
+    .from('groups')
+    .delete()
+    .eq('id', groupId);
+
+  if (error) {
+    console.error('Error deleting group:', error);
+    throw error;
+  }
+  return true;
+}
+
+export async function joinGroup(groupId: string, userId: string, role: 'admin' | 'member' = 'member'): Promise<boolean> {
+  const { data, error } = await supabase
     .from('group_members')
-    .insert({ group_id: groupId, user_id: userId, role: 'member' });
+    .insert([{ group_id: groupId, user_id: userId, role: role }]) // Include role
+    .select();
 
   if (error) {
     console.error('Error joining group:', error);
@@ -2524,5 +2603,69 @@ export async function getGroupComments(
     }
   }
 
+  return data || [];
+}
+
+// Event functions
+export async function createEvent(eventData: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'user_profile'>): Promise<Event | null> {
+  const { data, error } = await supabase
+    .from('events')
+    .insert([eventData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating event:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function getEvents(limit: number = 10, offset: number = 0): Promise<Event[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select(`
+      *,
+      user_profile:user_profiles(name, avatar_url)
+    `)
+    .order('event_date', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching events:', error);
+    throw error;
+  }
+  return data || [];
+}
+
+// Marketplace Item functions
+export async function createMarketplaceItem(itemData: Omit<MarketplaceItem, 'id' | 'created_at' | 'updated_at' | 'user_profile'>): Promise<MarketplaceItem | null> {
+  const { data, error } = await supabase
+    .from('marketplace_items')
+    .insert([itemData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating marketplace item:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function getMarketplaceItems(limit: number = 10, offset: number = 0): Promise<MarketplaceItem[]> {
+  const { data, error } = await supabase
+    .from('marketplace_items')
+    .select(`
+      *,
+      user_profile:user_profiles(name, avatar_url)
+    `)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching marketplace items:', error);
+    throw error;
+  }
   return data || [];
 }
