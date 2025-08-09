@@ -1,4 +1,3 @@
-```tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, Filter, ChevronDown, Users, Loader, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -68,8 +67,7 @@ const CommunityGroups = () => {
           searchTerm,
           type: selectedType || undefined,
           location: selectedLocation || undefined,
-          privacy: 'public', // Only show public groups in the "All Groups" tab
-          userId: user?.id // Pass current user ID to get isMember flag
+          privacy: 'public' // Only show public groups in the "All Groups" tab
         },
         { limit: limit + 1, offset } // Fetch one extra to check for more
       );
@@ -100,7 +98,7 @@ const CommunityGroups = () => {
     if (!user) return;
     try {
       const fetchedMyGroups = await getGroups(
-        { userId: user.id }, // Filter by user ID to get only their groups
+        { userId: user.id },
         { limit: 100, offset: 0 } // Fetch all user's groups for now
       );
       setMyGroups(fetchedMyGroups);
@@ -123,8 +121,8 @@ const CommunityGroups = () => {
     }
     try {
       await joinGroup(groupId, user.id);
-      // Optimistically update UI and then reload to ensure consistency
-      setAllGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: true, member_count: (g.member_count || 0) + 1 } : g));
+      // Optimistically update UI
+      setAllGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: true } : g));
       setMyGroups(prev => [...prev, allGroups.find(g => g.id === groupId)!]); // Add to my groups
     } catch (err) {
       console.error('Error joining group:', err);
@@ -136,8 +134,8 @@ const CommunityGroups = () => {
     if (!user) return;
     try {
       await leaveGroup(groupId, user.id);
-      // Optimistically update UI and then reload to ensure consistency
-      setAllGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: false, member_count: Math.max(0, (g.member_count || 0) - 1) } : g));
+      // Optimistically update UI
+      setAllGroups(prev => prev.map(g => g.id === groupId ? { ...g, isMember: false } : g));
       setMyGroups(prev => prev.filter(g => g.id !== groupId)); // Remove from my groups
     } catch (err) {
       console.error('Error leaving group:', err);
@@ -320,11 +318,10 @@ const CommunityGroups = () => {
               <GroupCard
                 key={group.id}
                 group={group}
-                isMember={group.isMember || false} // Use the isMember flag from the group object
+                isMember={myGroups.some(mg => mg.id === group.id)}
                 onJoin={handleJoinGroup}
                 onLeave={handleLeaveGroup}
                 currentUserId={user?.id || ''}
-                memberCount={group.member_count || 0} // Pass actual member count if available, otherwise 0
                 ref={activeTab === 'all' && index === displayedGroups.length - 1 ? lastGroupElementRef : null}
               />
             ))}
@@ -349,4 +346,3 @@ const CommunityGroups = () => {
 };
 
 export default CommunityGroups;
-```

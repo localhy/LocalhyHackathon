@@ -1,4 +1,3 @@
-```tsx
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -49,14 +48,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const signUp = async (email: string, password: string, userData: any) => {
-    // Extract referred_by from userData if present
-    const { referred_by, ...profileData } = userData;
-
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: profileData // Pass other user data to auth metadata
+        data: userData
       }
     })
 
@@ -67,10 +63,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('user_profiles')
           .insert({
             id: data.user.id,
-            name: profileData.name,
-            user_type: profileData.user_type,
-            newsletter_opt_in: profileData.newsletter_opt_in,
-            referred_by: referred_by || null // Save referred_by if available
+            name: userData.name,
+            user_type: userData.user_type,
+            newsletter_opt_in: userData.newsletter_opt_in
           })
 
         if (profileError) {
@@ -118,4 +113,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 }
 
 export { useAuth }
-```
