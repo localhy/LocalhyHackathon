@@ -10,7 +10,7 @@ const InviteNeighbors = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const inviteLink = `${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
+  const inviteLink = \`${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails]
