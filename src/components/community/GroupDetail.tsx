@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, MapPin, Lock, Globe, Send, Loader, AlertCircle, Check, Heart, MessageCircle,
-  Image, Video, User, Plus, X
+  Image, Video, User, Plus, X, Edit, Camera, Trash2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getGroupById, getGroupMembers, getGroupPosts, createGroupPost, likeGroupPost,
-  createGroupComment, getGroupComments, joinGroup, leaveGroup, uploadFile,
+  createGroupComment, getGroupComments, joinGroup, leaveGroup, uploadFile, updateGroup, deleteGroup,
   Group, GroupPost, GroupComment
 } from '../../lib/database'; // Import all necessary types and functions
 import CommentsModal from './CommentsModal'; // Import the CommentsModal component
@@ -41,6 +41,10 @@ const GroupDetail = () => {
   const [submittingPost, setSubmittingPost] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Cover photo upload states
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverPhotoInputRef = React.useRef<HTMLInputElement>(null);
 
   // Comment modal states
   const [showCommentsModal, setShowCommentsModal] = useState(false);
@@ -92,7 +96,9 @@ const GroupDetail = () => {
         setMembers(prev => prev.filter(m => m.user_id !== user.id));
       } else {
         await joinGroup(group.id, user.id);
-        setMembers(prev => [...prev, { user_id: user.id, user_profile: { name: user.user_metadata?.name, avatar_url: user.user_metadata?.avatar_url } }]);
+        // Re-fetch members to get the user_profile data for the newly joined member
+        const updatedMembers = await getGroupMembers(group.id);
+        setMembers(updatedMembers);
       }
     } catch (err) {
       console.error('Error joining/leaving group:', err);
@@ -136,6 +142,8 @@ const GroupDetail = () => {
         setNewPostContent('');
         setNewPostImage(null);
         setNewPostVideo(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (videoInputRef.current) videoInputRef.current.value = '';
       } else {
         throw new Error('Failed to create post');
       }
@@ -186,6 +194,48 @@ const GroupDetail = () => {
     if (file) {
       setNewPostVideo(file);
       setNewPostImage(null); // Reset image if video is selected
+    }
+  };
+
+  const handleCoverPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !group || !user) return;
+
+    setUploadingCover(true);
+    setError('');
+
+    try {
+      const coverUrl = await uploadFile(file, 'group-covers');
+      if (coverUrl) {
+        const updatedGroup = await updateGroup(group.id, { cover_photo_url: coverUrl });
+        if (updatedGroup) {
+          setGroup(updatedGroup);
+        } else {
+          throw new Error('Failed to update cover photo in database.');
+        }
+      } else {
+        throw new Error('Failed to upload cover photo file.');
+      }
+    } catch (err: any) {
+      console.error('Error uploading cover photo:', err);
+      setError(err.message || 'Failed to upload cover photo. Please try again.');
+    } finally {
+      setUploadingCover(false);
+      e.target.value = ''; // Clear input
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!group || !user || !isOwner) return;
+
+    if (window.confirm(`Are you sure you want to delete the group "${group.name}"? This action cannot be undone.`)) {
+      try {
+        await deleteGroup(group.id);
+        navigate('/dashboard/community?tab=groups'); // Redirect to groups list after deletion
+      } catch (err) {
+        console.error('Error deleting group:', err);
+        setError('Failed to delete group. Please try again.');
+      }
     }
   };
 
@@ -246,6 +296,39 @@ const GroupDetail = () => {
 
         {/* Wrap your existing content here */}
         <div className="bg-gray-50 flex-1"> {/* This div replaces the old outer div */}
+          {/* Cover Photo Section */}
+          <div className="relative h-64 bg-gray-300 overflow-hidden">
+            {group.cover_photo_url ? (
+              <img src={group.cover_photo_url} alt={group.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-blue-100">
+                <Users className="h-24 w-24 text-gray-400" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 flex items-end p-6">
+              <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Montserrat' }}>
+                {group.name}
+              </h1>
+            </div>
+            {isOwner && (
+              <label className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors cursor-pointer">
+                {uploadingCover ? (
+                  <Loader className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverPhotoUpload}
+                  ref={coverPhotoInputRef}
+                  className="hidden"
+                  disabled={uploadingCover}
+                />
+              </label>
+            )}
+          </div>
+
           <div className="max-w-6xl mx-auto px-4 py-6">
             {/* Group Header */}
             <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
@@ -270,9 +353,6 @@ const GroupDetail = () => {
                 )}
               </div>
 
-              <h1 className="text-3xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Montserrat' }}>
-                {group.name}
-              </h1>
               <p className="text-gray-600 mb-4" style={{ fontFamily: 'Inter' }}>
                 {group.description}
               </p>
@@ -293,6 +373,17 @@ const GroupDetail = () => {
                   <span>{group.privacy_setting.charAt(0).toUpperCase() + group.privacy_setting.slice(1)}</span>
                 </div>
               </div>
+              {isOwner && (
+                <div className="mt-4">
+                  <button
+                    onClick={handleDeleteGroup}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete Group</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Group Content */}
@@ -518,8 +609,11 @@ const GroupDetail = () => {
                             </div>
                           )}
                           <span className="text-gray-800 font-medium">{member.user_profile?.name || 'Anonymous'}</span>
+                          {member.role === 'admin' && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>
+                          )}
                           {member.user_id === group.owner_id && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Owner</span>
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Owner</span>
                           )}
                         </div>
                       ))
