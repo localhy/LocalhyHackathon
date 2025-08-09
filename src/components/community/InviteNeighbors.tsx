@@ -1,4 +1,3 @@
-```tsx
 import React, { useState } from 'react'
 import { UserPlus, Mail, Copy, Check, Send, X } from 'lucide-react'
 import { BASE_URL } from '../../lib/config'
@@ -10,7 +9,7 @@ const InviteNeighbors = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const inviteLink = \`${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
+  const inviteLink = `${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails]
@@ -62,26 +61,36 @@ const InviteNeighbors = () => {
     setError('')
     
     try {
-      // This is a conceptual call to a Supabase Edge Function
-      // You would deploy an Edge Function (e.g., named 'send-invites')
-      // that handles sending emails using a service like SendGrid, Resend, etc.
-      const response = await fetch('/functions/v1/send-invites', { // Replace with your actual Edge Function URL
+      // --- CONCEPTUAL: Call your Supabase Edge Function here ---
+      // This is a placeholder. You would replace this with an actual fetch call
+      // to your deployed Supabase Edge Function (e.g., /functions/v1/send-invites).
+      // The Edge Function would then use an email sending service (like Resend, SendGrid)
+      // to send the actual emails.
+      
+      // Example of what the fetch call might look like:
+      /*
+      const response = await fetch('/api/send-invites', { // Adjust this URL to your Edge Function endpoint
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add any necessary authorization headers if your function requires them
-          // e.g., 'Authorization': `Bearer ${YOUR_SUPABASE_ANON_KEY}`
+          // Include Authorization header if your Edge Function requires it
+          // 'Authorization': `Bearer ${YOUR_SUPABASE_ANON_KEY_OR_SERVICE_ROLE_KEY}`
         },
         body: JSON.stringify({ emails: validEmails, inviteLink }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send invitations via Edge Function.');
+        throw new Error(errorData.error || 'Failed to send invitations via server.');
       }
+      */
 
-      setSuccess(true);
-      setEmails(['']); // Clear emails after successful send
+      // --- SIMULATION (for local testing without a backend function) ---
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+      // --- END SIMULATION ---
+
+      setSuccess(true)
+      setEmails([''])
       
       // Reset success message after 3 seconds
       setTimeout(() => {
@@ -264,4 +273,3 @@ const InviteNeighbors = () => {
 }
 
 export default InviteNeighbors
-```
