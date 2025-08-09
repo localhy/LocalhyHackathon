@@ -62,22 +62,10 @@ const InviteNeighbors = () => {
     setError('')
     
     try {
-      // Call your deployed Supabase Edge Function
-      const response = await fetch('https://YOUR_SUPABASE_PROJECT_REF.supabase.co/functions/v1/send-invites', { // REPLACE THIS URL
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // If your function requires an Authorization header (e.g., for RLS), add it here.
-          // For this public function, it's usually not needed unless you add RLS to the function itself.
-        },
-        body: JSON.stringify({ emails: validEmails, inviteLink }),
-      });
+      // --- SIMULATION (for local testing without a backend function) ---
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+      // --- END SIMULATION ---
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send invitations via server.');
-      }
-      
       setSuccess(true)
       setEmails(['']) // Clear emails after successful send
       
