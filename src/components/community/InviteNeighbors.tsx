@@ -1,3 +1,4 @@
+```tsx
 import React, { useState } from 'react'
 import { UserPlus, Mail, Copy, Check, Send, X } from 'lucide-react'
 import { BASE_URL } from '../../lib/config'
@@ -9,7 +10,7 @@ const InviteNeighbors = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const inviteLink = `${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
+  const inviteLink = \`${BASE_URL}/auth?ref=${localStorage.getItem('userId') || ''}`
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails]
@@ -39,7 +40,7 @@ const InviteNeighbors = () => {
     }
   }
 
-  const sendInvites = () => {
+  const sendInvites = async () => { // Made async
     // Filter out empty emails
     const validEmails = emails.filter(email => email.trim() !== '')
     
@@ -60,17 +61,38 @@ const InviteNeighbors = () => {
     setSending(true)
     setError('')
     
-    // Simulate sending invites
-    setTimeout(() => {
-      setSending(false)
-      setSuccess(true)
-      setEmails([''])
+    try {
+      // This is a conceptual call to a Supabase Edge Function
+      // You would deploy an Edge Function (e.g., named 'send-invites')
+      // that handles sending emails using a service like SendGrid, Resend, etc.
+      const response = await fetch('/functions/v1/send-invites', { // Replace with your actual Edge Function URL
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add any necessary authorization headers if your function requires them
+          // e.g., 'Authorization': `Bearer ${YOUR_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ emails: validEmails, inviteLink }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send invitations via Edge Function.');
+      }
+
+      setSuccess(true);
+      setEmails(['']); // Clear emails after successful send
       
       // Reset success message after 3 seconds
       setTimeout(() => {
         setSuccess(false)
       }, 3000)
-    }, 1500)
+    } catch (err: any) {
+      console.error('Error sending invites:', err)
+      setError(err.message || 'An unexpected error occurred while sending invites.')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -242,3 +264,4 @@ const InviteNeighbors = () => {
 }
 
 export default InviteNeighbors
+```
