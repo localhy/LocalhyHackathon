@@ -322,6 +322,7 @@ const CommunityGroups = () => {
                 onJoin={handleJoinGroup}
                 onLeave={handleLeaveGroup}
                 currentUserId={user?.id || ''}
+                memberCount={group.member_count || 0} // Pass actual member count if available, otherwise 0
                 ref={activeTab === 'all' && index === displayedGroups.length - 1 ? lastGroupElementRef : null}
               />
             ))}
