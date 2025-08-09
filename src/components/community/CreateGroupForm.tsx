@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Save, Loader, AlertCircle, Check, Lightbulb, Megaphone, Building, Globe, Lock } from 'lucide-react';
+import { Plus, Save, Loader, AlertCircle, Check, Lightbulb, Megaphone, Building, Globe, Lock, Image, Camera } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { createGroup, Group } from '../../lib/database'; // Import Group interface and createGroup function
+import { createGroup, uploadFile, Group } from '../../lib/database'; // Import Group interface and createGroup function
 
 const CreateGroupForm = () => {
   const navigate = useNavigate();
@@ -16,7 +16,11 @@ const CreateGroupForm = () => {
     // For conditional fields (Idea Hub, Referral Network)
     linked_content_id: '', // e.g., Idea ID or Referral Job ID
   });
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [coverPhotoFile, setCoverPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -26,6 +30,17 @@ const CreateGroupForm = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'thumbnail' | 'cover') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (type === 'thumbnail') {
+        setThumbnailFile(file);
+      } else {
+        setCoverPhotoFile(file);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,8 +53,24 @@ const CreateGroupForm = () => {
     setSaving(true);
     setError('');
     setSuccess('');
+    setUploadingThumbnail(false);
+    setUploadingCover(false);
+
+    let thumbnailUrl = '';
+    let coverPhotoUrl = '';
 
     try {
+      if (thumbnailFile) {
+        setUploadingThumbnail(true);
+        thumbnailUrl = await uploadFile(thumbnailFile, 'group-thumbnails');
+        setUploadingThumbnail(false);
+      }
+      if (coverPhotoFile) {
+        setUploadingCover(true);
+        coverPhotoUrl = await uploadFile(coverPhotoFile, 'group-covers');
+        setUploadingCover(false);
+      }
+
       const newGroup = await createGroup({
         name: formData.name,
         description: formData.description,
@@ -47,11 +78,12 @@ const CreateGroupForm = () => {
         location: formData.location || undefined,
         owner_id: user.id,
         privacy_setting: formData.privacy_setting,
+        thumbnail_url: thumbnailUrl || undefined,
+        cover_photo_url: coverPhotoUrl || undefined,
       });
 
       if (newGroup) {
         setSuccess('Group created successfully!');
-        // Optionally, navigate to the new group's detail page
         navigate(`/dashboard/community/groups/${newGroup.id}`);
       } else {
         throw new Error('Failed to create group.');
@@ -61,6 +93,8 @@ const CreateGroupForm = () => {
       setError(err.message || 'Failed to create group. Please try again.');
     } finally {
       setSaving(false);
+      setUploadingThumbnail(false);
+      setUploadingCover(false);
     }
   };
 
@@ -182,6 +216,46 @@ const CreateGroupForm = () => {
               />
             </div>
 
+            {/* Thumbnail Upload */}
+            <div>
+              <label htmlFor="thumbnail_file" className="block text-sm font-medium text-gray-700 mb-2">Group Thumbnail (Optional)</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  id="thumbnail_file"
+                  name="thumbnail_file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'thumbnail')}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                />
+                {thumbnailFile && (
+                  <span className="text-sm text-gray-600">{thumbnailFile.name}</span>
+                )}
+                {uploadingThumbnail && <Loader className="h-5 w-5 animate-spin text-green-500" />}
+              </div>
+              <p className="text-sm text-gray-500 mt-1">Recommended: Square image for group cards.</p>
+            </div>
+
+            {/* Cover Photo Upload */}
+            <div>
+              <label htmlFor="cover_photo_file" className="block text-sm font-medium text-gray-700 mb-2">Group Cover Photo (Optional)</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  id="cover_photo_file"
+                  name="cover_photo_file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'cover')}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                />
+                {coverPhotoFile && (
+                  <span className="text-sm text-gray-600">{coverPhotoFile.name}</span>
+                )}
+                {uploadingCover && <Loader className="h-5 w-5 animate-spin text-green-500" />}
+              </div>
+              <p className="text-sm text-gray-500 mt-1">Recommended: Wide image for group detail page header.</p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Privacy Setting</label>
               <div className="flex space-x-4">
@@ -217,11 +291,11 @@ const CreateGroupForm = () => {
               </button>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploadingThumbnail || uploadingCover}
                 className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
                 style={{ fontFamily: 'Inter' }}
               >
-                {saving ? (
+                {(saving || uploadingThumbnail || uploadingCover) ? (
                   <>
                     <Loader className="h-4 w-4 animate-spin" />
                     <span>Creating...</span>
