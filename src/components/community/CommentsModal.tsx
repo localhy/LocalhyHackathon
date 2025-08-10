@@ -23,6 +23,23 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState('');
 
+  // Move formatDate definition here, before its usage
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+
+    return new Date(dateString).toLocaleDateString();
+  };
+
   useEffect(() => {
     if (isVisible && post) {
       loadComments();
@@ -33,8 +50,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     if (!post) return;
     setLoadingComments(true);
     try {
-      // Assuming getCommentsByContent can fetch comments for GroupPost
-      const fetchedComments = await getCommentsByContent(post.id, 'community_post', currentUserId); // Changed 'group_post' to 'community_post'
+      const fetchedComments = await getCommentsByContent(post.id, 'community_post', currentUserId);
       setComments(fetchedComments);
     } catch (err) {
       console.error('Error loading comments:', err);
@@ -51,15 +67,14 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     setCommentError('');
 
     try {
-      const comment = await createComment({ // Assuming createComment is generic enough
+      const comment = await createComment({
         content_id: post.id,
-        content_type: 'community_post', // Changed 'group_post' to 'community_post'
+        content_type: 'community_post',
         user_id: currentUserId,
         content: newComment.trim(),
       });
 
       if (comment) {
-        // Optimistic update: add comment with current user's profile info
         const { data: userProfileData } = await supabase
           .from('user_profiles')
           .select('name, avatar_url')
@@ -86,7 +101,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     if (!currentUserId) return;
 
     try {
-      const success = await likeComment(commentId, currentUserId); // Assuming likeComment is generic enough
+      const success = await likeComment(commentId, currentUserId);
       if (success) {
         setComments(prev => prev.map(c =>
           c.id === commentId
@@ -101,22 +116,6 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     } catch (err) {
       console.error('Error liking comment:', err);
     }
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-
-    return new Date(dateString).toLocaleDateString();
   };
 
   if (!isVisible) return null;
