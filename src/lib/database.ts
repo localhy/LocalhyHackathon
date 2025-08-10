@@ -2484,13 +2484,13 @@ export async function getGroupPosts(
 }
 
 export async function likeGroupPost(postId: string, userId: string): Promise<boolean> {
-  // Check if the user has already liked the post
+  // Check if the user has already liked the post using the composite key
   const { data: existingLike, error: checkError } = await supabase
     .from('group_post_likes')
-    .select('id')
+    .select('post_id, user_id') // Select the composite primary key columns
     .eq('post_id', postId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle(); // Use maybeSingle to get null if no row is found
 
   if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found
     console.error('Error checking existing like:', checkError);
@@ -2503,7 +2503,8 @@ export async function likeGroupPost(postId: string, userId: string): Promise<boo
     const { error: deleteError } = await supabase
       .from('group_post_likes')
       .delete()
-      .eq('id', existingLike.id);
+      .eq('post_id', postId) // Use post_id and user_id for deletion
+      .eq('user_id', userId);
 
     if (deleteError) {
       console.error('Error unliking group post:', deleteError);
