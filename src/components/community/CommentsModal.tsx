@@ -34,7 +34,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     setLoadingComments(true);
     try {
       // Assuming getCommentsByContent can fetch comments for GroupPost
-      const fetchedComments = await getCommentsByContent(post.id, 'group_post', currentUserId);
+      const fetchedComments = await getCommentsByContent(post.id, 'community_post', currentUserId); // Changed 'group_post' to 'community_post'
       setComments(fetchedComments);
     } catch (err) {
       console.error('Error loading comments:', err);
@@ -53,7 +53,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     try {
       const comment = await createComment({ // Assuming createComment is generic enough
         content_id: post.id,
-        content_type: 'group_post',
+        content_type: 'community_post', // Changed 'group_post' to 'community_post'
         user_id: currentUserId,
         content: newComment.trim(),
       });
