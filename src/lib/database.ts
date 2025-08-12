@@ -2551,6 +2551,21 @@ export async function likeGroupPost(postId: string, userId: string): Promise<boo
   return success;
 }
 
+export async function updateGroupPost(postId: string, updates: UpdateGroupPostData): Promise<GroupPost | null> {
+  const { data, error } = await supabase
+    .from('group_posts')
+    .update(updates)
+    .eq('id', postId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating group post:', error);
+    throw error;
+  }
+  return data;
+}
+
 // --- Group Comment Management Functions ---
 
 export async function createGroupComment(commentData: {
