@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Loader, MessageCircle, Heart, User, X } from 'lucide-react';
+import { Send, Loader, MessageCircle, Heart, User, X, Trash2 } from 'lucide-react'; // Added Trash2 icon
 import { supabase } from '../../lib/supabase'; // Assuming supabase is accessible
 import {
-  getCommentsByContent,
-  createComment,
-  likeComment,
+  getGroupComments, // Changed from getCommentsByContent
+  createGroupComment, // Changed from createComment
+  likeComment, // This function is generic for comment_likes table
+  deleteGroupComment, // Added deleteGroupComment
   GroupPost, // Assuming GroupPost is imported or defined elsewhere if needed
   GroupComment // Assuming GroupComment is imported or defined elsewhere if needed
 } from '../../lib/database'; // Adjust path as necessary
@@ -50,7 +51,8 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     if (!post) return;
     setLoadingComments(true);
     try {
-      const fetchedComments = await getCommentsByContent(post.id, 'community_post', currentUserId);
+      // Use getGroupComments for comments on group posts
+      const fetchedComments = await getGroupComments(post.id, currentUserId);
       setComments(fetchedComments);
     } catch (err) {
       console.error('Error loading comments:', err);
@@ -67,9 +69,9 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     setCommentError('');
 
     try {
-      const comment = await createComment({
-        content_id: post.id,
-        content_type: 'community_post',
+      // Use createGroupComment for comments on group posts
+      const comment = await createGroupComment({
+        post_id: post.id,
         user_id: currentUserId,
         content: newComment.trim(),
       });
@@ -101,6 +103,8 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     if (!currentUserId) return;
 
     try {
+      // This likeComment function is generic and works for comment_likes table
+      // If you had a separate group_comment_likes table, you'd need a new function
       const success = await likeComment(commentId, currentUserId);
       if (success) {
         setComments(prev => prev.map(c =>
@@ -115,6 +119,25 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
       }
     } catch (err) {
       console.error('Error liking comment:', err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, commentContent: string) => {
+    if (!currentUserId) return;
+    if (!window.confirm(`Are you sure you want to delete this comment: "${commentContent.substring(0, 50)}..."? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const success = await deleteGroupComment(commentId); // Use the new deleteGroupComment
+      if (success) {
+        setComments(prev => prev.filter(c => c.id !== commentId));
+      } else {
+        setCommentError('Failed to delete comment. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      setCommentError('Failed to delete comment. Please try again.');
     }
   };
 
@@ -160,7 +183,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
                   )}
                   <div className="flex-1">
                     <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center space-x-2 mb-2">
+                      <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-gray-900">
                           {comment.user_profile?.name || 'Anonymous'}
                         </span>
@@ -180,6 +203,15 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
                         <Heart className={`h-4 w-4 ${comment.liked_by_user ? 'fill-current' : ''}`} />
                         <span>{comment.likes}</span>
                       </button>
+                      {currentUserId === comment.user_id && ( // Only show delete for owner
+                        <button
+                          onClick={() => handleDeleteComment(comment.id, comment.content)}
+                          className="flex items-center space-x-1 text-sm text-gray-500 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
