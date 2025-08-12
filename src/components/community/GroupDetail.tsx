@@ -15,7 +15,10 @@ import {
 import CommentsModal from './CommentsModal'; // Import the CommentsModal component
 
 const GroupDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  // FIX: Changed how id is extracted from useParams to avoid potential destructuring issues
+  const params = useParams<{ id: string }>();
+  const id = params.id; // This is effectively line 58 now
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const [group, setGroup] = useState<Group | null>(null);
@@ -832,11 +835,11 @@ const GroupDetail = () => {
                             <img
                               src={member.user_profile.avatar_url}
                               alt={member.user_profile.name}
-                              className="w-8 h-8 rounded-full object-cover"
+                              className="w-10 h-10 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center">
-                              <User className="h-4 w-4 text-white" />
+                            <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center">
+                              <User className="h-5 w-5 text-white" />
                             </div>
                           )}
                           <span className="text-gray-800 font-medium">{member.user_profile?.name || 'Anonymous'}</span>
