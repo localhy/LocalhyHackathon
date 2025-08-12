@@ -2577,6 +2577,19 @@ export async function createGroupComment(commentData: {
   return data;
 }
 
+export async function deleteGroupComment(commentId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('group_comments')
+    .delete()
+    .eq('id', commentId);
+
+  if (error) {
+    console.error('Error deleting group comment:', error);
+    throw error;
+  }
+  return true;
+}
+
 export async function getGroupComments(
   postId: string,
   currentUserId?: string // Optional: to check if current user liked comments
