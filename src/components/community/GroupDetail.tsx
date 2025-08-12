@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, MapPin, Lock, Globe, Send, Loader, AlertCircle, Check, Heart, MessageCircle,
-  Image, Video, User, Plus, X, Edit, Camera, Trash2
+  Image, Video, User, Plus, X, Edit, Camera, Trash2, MoreVertical
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getGroupById, getGroupMembers, getGroupPosts, createGroupPost, likeGroupPost,
   createGroupComment, getGroupComments, joinGroup, leaveGroup, uploadFile, updateGroup, deleteGroup,
+  deleteGroupPost, // Import the new deleteGroupPost function
   Group, GroupPost, GroupComment
 } from '../../lib/database'; // Import all necessary types and functions
 import CommentsModal from './CommentsModal'; // Import the CommentsModal component
@@ -173,6 +174,25 @@ const GroupDetail = () => {
     } catch (err) {
       console.error('Error liking post:', err);
       setError('Failed to like/unlike post. Please try again.');
+    }
+  };
+
+  const handleDeletePost = async (postId: string, postTitle: string) => {
+    if (!user) return; // User must be logged in
+    if (!window.confirm(`Are you sure you want to delete the post "${postTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const success = await deleteGroupPost(postId);
+      if (success) {
+        setPosts(prev => prev.filter(post => post.id !== postId));
+      } else {
+        setError('Failed to delete post. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setError('Failed to delete post. Please try again.');
     }
   };
 
@@ -537,6 +557,21 @@ const GroupDetail = () => {
                                 <h3 className="font-medium text-gray-900">{post.user_profile?.name || 'Anonymous'}</h3>
                                 <p className="text-sm text-gray-500">{formatTimeAgo(post.created_at)}</p>
                               </div>
+                              {user && user.id === post.user_id && (
+                                <div className="relative">
+                                  <button
+                                    className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Implement a dropdown menu or direct action here
+                                      // For now, direct delete
+                                      handleDeletePost(post.id, post.content.substring(0, 20) + '...');
+                                    }}
+                                  >
+                                    <Trash2 className="h-5 w-5" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <p className="mt-2 text-gray-700 whitespace-pre-line">{post.content}</p>
                           </div>
