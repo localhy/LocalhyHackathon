@@ -2590,6 +2590,46 @@ export async function deleteGroupComment(commentId: string): Promise<boolean> {
   return true;
 }
 
+export async function likeGroupComment(commentId: string, userId: string): Promise<boolean> {
+  const { data: existingLike, error: fetchError } = await supabase
+    .from('group_comment_likes')
+    .select('comment_id')
+    .eq('comment_id', commentId)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    console.error('Error checking existing group comment like:', fetchError);
+    throw fetchError;
+  }
+
+  if (existingLike) {
+    // Unlike
+    const { error } = await supabase
+      .from('group_comment_likes')
+      .delete()
+      .eq('comment_id', commentId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error unliking group comment:', error);
+      throw error;
+    }
+    return true;
+  } else {
+    // Like
+    const { error } = await supabase
+      .from('group_comment_likes')
+      .insert({ comment_id: commentId, user_id: userId });
+
+    if (error) {
+      console.error('Error liking group comment:', error);
+      throw error;
+    }
+    return true;
+  }
+}
+
 export async function getGroupComments(
   postId: string,
   currentUserId?: string // Optional: to check if current user liked comments
