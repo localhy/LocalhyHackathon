@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'; // Assuming supabase is accessibl
 import {
   getGroupComments, // Changed from getCommentsByContent
   createGroupComment, // Changed from createComment
-  likeComment, // This function is generic for comment_likes table
+  likeGroupComment, // <--- Changed from likeComment
   deleteGroupComment, // Added deleteGroupComment
   GroupPost, // Assuming GroupPost is imported or defined elsewhere if needed
   GroupComment // Assuming GroupComment is imported or defined elsewhere if needed
@@ -103,9 +103,8 @@ const CommentsModal: React.FC<CommentsModalProps> = ({ post, isVisible, onClose,
     if (!currentUserId) return;
 
     try {
-      // This likeComment function is generic and works for comment_likes table
-      // If you had a separate group_comment_likes table, you'd need a new function
-      const success = await likeComment(commentId, currentUserId);
+      // Use the new likeGroupComment function
+      const success = await likeGroupComment(commentId, currentUserId); // <--- Changed function call
       if (success) {
         setComments(prev => prev.map(c =>
           c.id === commentId
