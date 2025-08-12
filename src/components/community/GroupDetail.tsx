@@ -1,7 +1,6 @@
 import Sidebar from '../dashboard/Sidebar';
 import TopBar from './../dashboard/TopBar'; // Corrected import path
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, MapPin, Lock, Globe, Send, Loader, AlertCircle, Check, Heart, MessageCircle,
   Image, Video, User, Plus, X, Edit, Camera, Trash2, MoreVertical
@@ -10,8 +9,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getGroupById, getGroupMembers, getGroupPosts, createGroupPost, likeGroupPost,
   createGroupComment, getGroupComments, joinGroup, leaveGroup, uploadFile, updateGroup, deleteGroup,
-  deleteGroupPost, // Import the new deleteGroupPost function
-  Group, GroupPost, GroupComment
+  deleteGroupPost, updateGroupPost, // Import the new updateGroupPost function
+  Group, GroupPost, GroupComment, UpdateGroupPostData
 } from '../../lib/database'; // Import all necessary types and functions
 import CommentsModal from './CommentsModal'; // Import the CommentsModal component
 
@@ -42,6 +41,16 @@ const GroupDetail = () => {
   const [submittingPost, setSubmittingPost] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Post editing states
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editedPostContent, setEditedPostContent] = useState('');
+  const [editedPostImage, setEditedPostImage] = useState<File | null>(null);
+  const [editedPostVideo, setEditedPostVideo] = useState<File | null>(null);
+  const [updatingPost, setUpdatingPost] = useState(false);
+  const editFileInputRef = React.useRef<HTMLInputElement>(null);
+  const editVideoInputRef = React.useRef<HTMLInputElement>(null);
+
 
   // Cover photo upload states
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -193,6 +202,85 @@ const GroupDetail = () => {
     } catch (err) {
       console.error('Error deleting post:', err);
       setError('Failed to delete post. Please try again.');
+    }
+  };
+
+  const handleEditPost = (post: GroupPost) => {
+    setEditingPostId(post.id);
+    setEditedPostContent(post.content);
+    // Note: For existing images/videos, you might want to display them and allow removal/replacement
+    // For simplicity, we're not pre-filling file inputs or showing current media directly in edit mode here.
+    setEditedPostImage(null);
+    setEditedPostVideo(null);
+  };
+
+  const handleSaveEditedPost = async (postId: string) => {
+    if (!user || !editedPostContent.trim() || updatingPost) return;
+
+    setUpdatingPost(true);
+    setError('');
+
+    let imageUrl: string | undefined = undefined;
+    let videoUrl: string | undefined = undefined;
+
+    try {
+      // Handle new image/video uploads for edited post
+      if (editedPostImage) {
+        imageUrl = await uploadFile(editedPostImage, 'group-posts');
+      }
+      if (editedPostVideo) {
+        videoUrl = await uploadFile(editedPostVideo, 'group-posts');
+      }
+
+      const updates: UpdateGroupPostData = {
+        content: editedPostContent.trim(),
+        image_url: imageUrl,
+        video_url: videoUrl,
+      };
+
+      const updatedPost = await updateGroupPost(postId, updates);
+
+      if (updatedPost) {
+        setPosts(prev => prev.map(p =>
+          p.id === postId
+            ? { ...p, content: updatedPost.content, image_url: updatedPost.image_url, video_url: updatedPost.video_url }
+            : p
+        ));
+        setEditingPostId(null);
+        setEditedPostContent('');
+        setEditedPostImage(null);
+        setEditedPostVideo(null);
+      } else {
+        throw new Error('Failed to update post');
+      }
+    } catch (err: any) {
+      console.error('Error updating post:', err);
+      setError(err.message || 'Failed to update post. Please try again.');
+    } finally {
+      setUpdatingPost(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPostId(null);
+    setEditedPostContent('');
+    setEditedPostImage(null);
+    setEditedPostVideo(null);
+  };
+
+  const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditedPostImage(file);
+      setEditedPostVideo(null); // Reset video if image is selected
+    }
+  };
+
+  const handleEditVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditedPostVideo(file);
+      setEditedPostImage(null); // Reset image if video is selected
     }
   };
 
@@ -570,18 +658,126 @@ const GroupDetail = () => {
                                   >
                                     <Trash2 className="h-5 w-5" />
                                   </button>
+                                  <button
+                                    className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 ml-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditPost(post);
+                                    }}
+                                  >
+                                    <Edit className="h-5 w-5" />
+                                  </button>
                                 </div>
                               )}
                             </div>
-                            <p className="mt-2 text-gray-700 whitespace-pre-line">{post.content}</p>
+                            {editingPostId === post.id ? (
+                              <div className="mt-2">
+                                <textarea
+                                  value={editedPostContent}
+                                  onChange={(e) => setEditedPostContent(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                                  rows={3}
+                                />
+                                {(editedPostImage || editedPostVideo) && (
+                                  <div className="mt-2 relative">
+                                    {editedPostImage && (
+                                      <div className="relative">
+                                        <img
+                                          src={URL.createObjectURL(editedPostImage)}
+                                          alt="Edited post image"
+                                          className="w-full h-40 object-cover rounded-lg"
+                                        />
+                                        <button
+                                          onClick={() => setEditedPostImage(null)}
+                                          className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    {editedPostVideo && (
+                                      <div className="relative">
+                                        <video
+                                          src={URL.createObjectURL(editedPostVideo)}
+                                          controls
+                                          className="w-full h-40 object-cover rounded-lg"
+                                        />
+                                        <button
+                                          onClick={() => setEditedPostVideo(null)}
+                                          className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between mt-2">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => editFileInputRef.current?.click()}
+                                      className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
+                                      title="Add Image"
+                                    >
+                                      <Image className="h-5 w-5" />
+                                    </button>
+                                    <input
+                                      ref={editFileInputRef}
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleEditImageUpload}
+                                      className="hidden"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => editVideoInputRef.current?.click()}
+                                      className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
+                                      title="Add Video"
+                                    >
+                                      <Video className="h-5 w-5" />
+                                    </button>
+                                    <input
+                                      ref={editVideoInputRef}
+                                      type="file"
+                                      accept="video/*"
+                                      onChange={handleEditVideoUpload}
+                                      className="hidden"
+                                    />
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handleSaveEditedPost(post.id)}
+                                      disabled={!editedPostContent.trim() || updatingPost}
+                                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-full font-medium flex items-center space-x-2"
+                                    >
+                                      {updatingPost ? (
+                                        <Loader className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Check className="h-4 w-4" />
+                                      )}
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-full font-medium"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-gray-700 whitespace-pre-line">{post.content}</p>
+                            )}
                           </div>
                         </div>
-                        {post.image_url && (
+                        {post.image_url && !editingPostId && ( // Only show media if not in edit mode
                           <div className="px-4 pb-4">
                             <img src={post.image_url} alt="Post media" className="w-full rounded-lg" />
                           </div>
                         )}
-                        {post.video_url && (
+                        {post.video_url && !editingPostId && ( // Only show media if not in edit mode
                           <div className="px-4 pb-4">
                             <video src={post.video_url} controls className="w-full rounded-lg" />
                           </div>
