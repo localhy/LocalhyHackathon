@@ -2438,6 +2438,19 @@ export async function createGroupPost(postData: {
   return data;
 }
 
+export async function deleteGroupPost(postId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('group_posts')
+    .delete()
+    .eq('id', postId);
+
+  if (error) {
+    console.error('Error deleting group post:', error);
+    throw error;
+  }
+  return true;
+}
+
 export async function getGroupPosts(
   groupId: string,
   currentUserId?: string, // Optional: to check if current user liked posts
