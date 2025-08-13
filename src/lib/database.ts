@@ -2611,9 +2611,9 @@ export async function likeGroupComment(commentId: string, userId: string): Promi
     .select('comment_id')
     .eq('comment_id', commentId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle(); // <--- Changed from .single() to .maybeSingle()
 
-  if (fetchError && fetchError.code !== 'PGRST116') {
+  if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is now handled by maybeSingle returning null
     console.error('Error checking existing group comment like:', fetchError);
     throw fetchError;
   }
