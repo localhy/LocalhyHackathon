@@ -1664,6 +1664,40 @@ export const createMessage = async (messageData: CreateMessageData): Promise<Mes
   return data
 }
 
+export async function getOrCreateConversation(user1Id: string, user2Id: string): Promise<string | null> {
+  // Ensure consistent ordering for participant IDs to find existing conversation
+  const [p1, p2] = user1Id < user2Id ? [user1Id, user2Id] : [user2Id, user1Id];
+
+  // Try to find an existing conversation
+  const { data: existingConversation, error: fetchError } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`and(participant_1.eq.${p1},participant_2.eq.${p2}),and(participant_1.eq.${p2},participant_2.eq.${p1})`)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Error fetching existing conversation:', fetchError);
+    throw fetchError;
+  }
+
+  if (existingConversation) {
+    return existingConversation.id; // Return existing conversation ID
+  } else {
+    // Create a new conversation if none exists
+    const { data: newConversation, error: createError } = await supabase
+      .from('conversations')
+      .insert({ participant_1: p1, participant_2: p2 })
+      .select('id')
+      .single();
+
+    if (createError) {
+      console.error('Error creating new conversation:', createError);
+      throw createError;
+    }
+    return newConversation.id; // Return new conversation ID
+  }
+}
+
 export const markMessagesAsRead = async (conversationId: string, userId: string): Promise<boolean> => {
   const { error } = await supabase
     .from('messages')
