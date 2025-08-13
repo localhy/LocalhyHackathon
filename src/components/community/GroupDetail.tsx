@@ -589,7 +589,7 @@ const GroupDetail = () => {
                         <div className="px-4 py-2 border-t border-gray-100 text-sm text-gray-500 flex items-center space-x-4">
                           <div className="flex items-center space-x-1">
                             <Heart className="h-4 w-4" />
-                            <span>{post.likes} likes</span>
+                            <span>{(post.likes || 0)} likes</span>
                           </div>
                           <div className="flex items-center space-x-1">
                             <MessageCircle className="h-4 w-4" />
