@@ -10,8 +10,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getGroupById, getGroupMembers, getGroupPosts, createGroupPost, likeGroupPost,
   createGroupComment, getGroupComments, joinGroup, leaveGroup, uploadFile, updateGroup, deleteGroup,
-  deleteGroupPost, // Import the new deleteGroupPost function
-  Group, GroupPost, GroupComment
+  deleteGroupPost, updateGroupPost, getOrCreateConversation, // Import the new updateGroupPost and getOrCreateConversation functions
+  Group, GroupPost, GroupComment, UpdateGroupPostData // Import UpdateGroupPostData type
 } from '../../lib/database'; // Import all necessary types and functions
 import CommentsModal from './CommentsModal'; // Import the CommentsModal component
 
@@ -42,6 +42,16 @@ const GroupDetail = () => {
   const [submittingPost, setSubmittingPost] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Post editing states
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editedPostContent, setEditedPostContent] = useState('');
+  const [editedPostImage, setEditedPostImage] = useState<File | null>(null);
+  const [editedPostVideo, setEditedPostVideo] = useState<File | null>(null);
+  const [updatingPost, setUpdatingPost] = useState(false);
+  const editFileInputRef = React.useRef<HTMLInputElement>(null);
+  const editVideoInputRef = React.useRef<HTMLInputElement>(null);
+
 
   // Cover photo upload states
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -133,13 +143,9 @@ const GroupDetail = () => {
       });
 
       if (newPost) {
-        // Add the new post to the state immediately for better UX
-        const enhancedPost: GroupPost = {
-          ...newPost,
-          user_profile: { name: user.user_metadata?.name, avatar_url: user.user_metadata?.avatar_url },
-          liked_by_user: false,
-        };
-        setPosts(prev => [enhancedPost, ...prev]);
+        // Re-fetch all posts to get updated counts from the trigger
+        const fetchedPosts = await getGroupPosts(group.id, user?.id || undefined);
+        setPosts(fetchedPosts);
         setNewPostContent('');
         setNewPostImage(null);
         setNewPostVideo(null);
@@ -186,13 +192,94 @@ const GroupDetail = () => {
     try {
       const success = await deleteGroupPost(postId);
       if (success) {
-        setPosts(prev => prev.filter(post => post.id !== postId));
+        // Re-fetch all posts to get updated counts from the trigger
+        const fetchedPosts = await getGroupPosts(group.id, user?.id || undefined);
+        setPosts(fetchedPosts);
       } else {
         setError('Failed to delete post. Please try again.');
       }
     } catch (err) {
       console.error('Error deleting post:', err);
       setError('Failed to delete post. Please try again.');
+    }
+  };
+
+  const handleEditPost = (post: GroupPost) => {
+    setEditingPostId(post.id);
+    setEditedPostContent(post.content);
+    // Note: For existing images/videos, you might want to display them and allow removal/replacement
+    // For simplicity, we're not pre-filling file inputs or showing current media directly in edit mode here.
+    setEditedPostImage(null);
+    setEditedPostVideo(null);
+  };
+
+  const handleSaveEditedPost = async (postId: string) => {
+    if (!user || !editedPostContent.trim() || updatingPost) return;
+
+    setUpdatingPost(true);
+    setError('');
+
+    let imageUrl: string | undefined = undefined;
+    let videoUrl: string | undefined = undefined;
+
+    try {
+      // Handle new image/video uploads for edited post
+      if (editedPostImage) {
+        imageUrl = await uploadFile(editedPostImage, 'group-posts');
+      }
+      if (editedPostVideo) {
+        videoUrl = await uploadFile(editedPostVideo, 'group-posts');
+      }
+
+      const updates: UpdateGroupPostData = {
+        content: editedPostContent.trim(),
+        image_url: imageUrl,
+        video_url: videoUrl,
+      };
+
+      const updatedPost = await updateGroupPost(postId, updates);
+
+      if (updatedPost) {
+        setPosts(prev => prev.map(p =>
+          p.id === postId
+            ? { ...p, content: updatedPost.content, image_url: updatedPost.image_url, video_url: updatedPost.video_url }
+            : p
+        ));
+        setEditingPostId(null);
+        setEditedPostContent('');
+        setEditedPostImage(null);
+        setEditedPostVideo(null);
+      } else {
+        throw new Error('Failed to update post');
+      }
+    } catch (err: any) {
+      console.error('Error updating post:', err);
+      setError(err.message || 'Failed to update post. Please try again.');
+    } finally {
+      setUpdatingPost(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPostId(null);
+    setEditedPostContent('');
+    setEditedPostImage(null);
+    setEditedPostVideo(null);
+  };
+
+  const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditedPostImage(file);
+      setEditedPostVideo(null); // Reset video if image is selected
+    }
+  };
+
+  const handleEditVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditedPostVideo(file);
+      setEditedPostImage(null); // Reset image if video is selected
     }
   };
 
@@ -256,6 +343,22 @@ const GroupDetail = () => {
         console.error('Error deleting group:', err);
         setError('Failed to delete group. Please try again.');
       }
+    }
+  };
+
+  const handleContactMember = async (memberUserId: string) => {
+    if (!user || !memberUserId || user.id === memberUserId) return; // Cannot message self
+
+    try {
+      const conversationId = await getOrCreateConversation(user.id, memberUserId);
+      if (conversationId) {
+        navigate(`/dashboard/messages?conversationId=${conversationId}`);
+      } else {
+        setError('Failed to start conversation.');
+      }
+    } catch (err) {
+      console.error('Error contacting member:', err);
+      setError('Failed to start conversation. Please try again.');
     }
   };
 
@@ -570,18 +673,126 @@ const GroupDetail = () => {
                                   >
                                     <Trash2 className="h-5 w-5" />
                                   </button>
+                                  <button
+                                    className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 ml-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditPost(post);
+                                    }}
+                                  >
+                                    <Edit className="h-5 w-5" />
+                                  </button>
                                 </div>
                               )}
                             </div>
-                            <p className="mt-2 text-gray-700 whitespace-pre-line">{post.content}</p>
+                            {editingPostId === post.id ? (
+                              <div className="mt-2">
+                                <textarea
+                                  value={editedPostContent}
+                                  onChange={(e) => setEditedPostContent(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                                  rows={3}
+                                />
+                                {(editedPostImage || editedPostVideo) && (
+                                  <div className="mt-2 relative">
+                                    {editedPostImage && (
+                                      <div className="relative">
+                                        <img
+                                          src={URL.createObjectURL(editedPostImage)}
+                                          alt="Edited post image"
+                                          className="w-full h-40 object-cover rounded-lg"
+                                        />
+                                        <button
+                                          onClick={() => setEditedPostImage(null)}
+                                          className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    {editedPostVideo && (
+                                      <div className="relative">
+                                        <video
+                                          src={URL.createObjectURL(editedPostVideo)}
+                                          controls
+                                          className="w-full h-40 object-cover rounded-lg"
+                                        />
+                                        <button
+                                          onClick={() => setEditedPostVideo(null)}
+                                          className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between mt-2">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => editFileInputRef.current?.click()}
+                                      className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
+                                      title="Add Image"
+                                    >
+                                      <Image className="h-5 w-5" />
+                                    </button>
+                                    <input
+                                      ref={editFileInputRef}
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleEditImageUpload}
+                                      className="hidden"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => editVideoInputRef.current?.click()}
+                                      className="text-gray-500 hover:text-green-500 p-2 rounded-full hover:bg-gray-100"
+                                      title="Add Video"
+                                    >
+                                      <Video className="h-5 w-5" />
+                                    </button>
+                                    <input
+                                      ref={editVideoInputRef}
+                                      type="file"
+                                      accept="video/*"
+                                      onChange={handleEditVideoUpload}
+                                      className="hidden"
+                                    />
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handleSaveEditedPost(post.id)}
+                                      disabled={!editedPostContent.trim() || updatingPost}
+                                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-full font-medium flex items-center space-x-2"
+                                    >
+                                      {updatingPost ? (
+                                        <Loader className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Check className="h-4 w-4" />
+                                      )}
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-full font-medium"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-gray-700 whitespace-pre-line">{post.content}</p>
+                            )}
                           </div>
                         </div>
-                        {post.image_url && (
+                        {post.image_url && !editingPostId && ( // Only show media if not in edit mode
                           <div className="px-4 pb-4">
                             <img src={post.image_url} alt="Post media" className="w-full rounded-lg" />
                           </div>
                         )}
-                        {post.video_url && (
+                        {post.video_url && !editingPostId && ( // Only show media if not in edit mode
                           <div className="px-4 pb-4">
                             <video src={post.video_url} controls className="w-full rounded-lg" />
                           </div>
@@ -589,7 +800,7 @@ const GroupDetail = () => {
                         <div className="px-4 py-2 border-t border-gray-100 text-sm text-gray-500 flex items-center space-x-4">
                           <div className="flex items-center space-x-1">
                             <Heart className="h-4 w-4" />
-                            <span>{(post.likes || 0)} likes</span>
+                            <span>{(post.likes || 0)} likes</span> {/* Updated here */}
                           </div>
                           <div className="flex items-center space-x-1">
                             <MessageCircle className="h-4 w-4" />
@@ -636,14 +847,23 @@ const GroupDetail = () => {
                             <img
                               src={member.user_profile.avatar_url}
                               alt={member.user_profile.name}
-                              className="w-8 h-8 rounded-full object-cover"
+                              className="w-10 h-10 rounded-full object-cover cursor-pointer" // Make clickable
+                              onClick={() => handleContactMember(member.user_id)} // Add click handler
                             />
                           ) : (
-                            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center">
-                              <User className="h-4 w-4 text-white" />
+                            <div
+                              className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center cursor-pointer" // Make clickable
+                              onClick={() => handleContactMember(member.user_id)} // Add click handler
+                            >
+                              <User className="h-5 w-5 text-white" />
                             </div>
                           )}
-                          <span className="text-gray-800 font-medium">{member.user_profile?.name || 'Anonymous'}</span>
+                          <span
+                            className="text-gray-800 font-medium cursor-pointer" // Make clickable
+                            onClick={() => handleContactMember(member.user_id)} // Add click handler
+                          >
+                            {member.user_profile?.name || 'Anonymous'}
+                          </span>
                           {member.role === 'admin' && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Admin</span>
                           )}
