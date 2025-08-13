@@ -2459,7 +2459,14 @@ export async function getGroupPosts(
   let query = supabase
     .from('group_posts')
     .select(`
-      *,
+      id,
+      content,
+      image_url,
+      video_url,
+      likes,
+      comments_count,
+      created_at,
+      user_id,
       user_profile:user_profiles(name, avatar_url)
     `)
     .eq('group_id', groupId)
