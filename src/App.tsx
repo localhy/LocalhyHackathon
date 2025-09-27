@@ -8,6 +8,7 @@ import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import UseCases from './components/UseCases';
 import Benefits from './components/Benefits';
+import WhitelabelSection from './components/WhitelabelSection';
 import Footer from './components/Footer';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
@@ -42,6 +43,7 @@ const LandingPage = () => (
     <Features />
     <HowItWorks />
     <UseCases />
+    <WhitelabelSection />
     <Benefits />
     <Footer />
   </div>
