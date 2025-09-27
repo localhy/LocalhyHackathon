@@ -67,7 +67,7 @@ const WhitelabelSection = () => {
         <div className="text-center">
           <button
             onClick={handleLearnMore}
-            className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-xl group"
+            className="inline-flex items-center bg-green-500 hover:bg-green-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-xl group"
             style={{ fontFamily: 'Inter' }}
           >
             Learn About Whitelabel
